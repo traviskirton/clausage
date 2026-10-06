@@ -39,7 +39,7 @@ struct UsageProvider: TimelineProvider {
     }
 }
 
-private let usageURL = URL(string: "claudeusage://usage")!
+private let usageURL = URL(string: "clausage://usage")!
 
 // MARK: Home Screen
 

@@ -49,7 +49,7 @@ struct UsageWidgetView: View {
 @main
 struct UsageWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ClaudeUsageWidget", provider: Provider()) { entry in
+        StaticConfiguration(kind: "ClausageWidget", provider: Provider()) { entry in
             UsageWidgetView(entry: entry)
         }
         .configurationDisplayName("Clausage")

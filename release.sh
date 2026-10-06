@@ -1,19 +1,23 @@
 #!/bin/zsh
-# Build, notarize, zip, sign and publish a Claude Usage update to https://updates.postfl.com/claude-usage/
+# Build, notarize, zip, sign and publish a Clausage update to https://clausage.ai/updates/
 #
 #   ./release.sh 1.2.0               bump to 1.2.0 (build number +1), build, sign, upload
 #   ./release.sh                     rebuild/publish the current version as-is
 #   ./release.sh 1.2.0 --no-upload   do everything except upload (output in release/)
 #
-# Needs: SPARKLE_KEY_FILE (path to the Sparkle private key, set in ~/.zshrc), .claude/release.env, and the FTP
-# password in the Keychain. Uploads over explicit FTPS with full certificate checking.
+# Needs: SPARKLE_KEY_FILE (path to the Sparkle private key, set in ~/.zshrc), .claude/release.env, and both FTP
+# passwords in the Keychain. Uploads over explicit FTPS with full certificate checking.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FEED_BASE="https://updates.postfl.com/claude-usage"
-# Upload host, FTP account and Keychain service live outside git, in .claude/release.env:
-#   FTP_HOST=...   (the name on the FTP server's TLS certificate)
-#   FTP_USER=...
+FEED_BASE="https://clausage.ai/updates"
+# Copies released as "Claude Usage" (0.0.1–0.0.3) only ever check this feed, so it gets the same appcast.
+LEGACY_FEED_BASE="https://updates.postfl.com/claude-usage"
+# Upload host, FTP accounts and Keychain services live outside git, in .claude/release.env:
+#   FTP_HOST=...               (the name on the FTP server's TLS certificate)
+#   SITE_FTP_USER=...          (rooted at the clausage.ai document root; shared with deploy-site.sh)
+#   SITE_KEYCHAIN_SERVICE=...
+#   FTP_USER=...               (the legacy feed's account, rooted at updates.postfl.com/claude-usage)
 #   KEYCHAIN_SERVICE=...
 [[ -f .claude/release.env ]] || { echo "error: .claude/release.env is missing (see .claude/release.md)" >&2; exit 1; }
 source .claude/release.env
@@ -38,6 +42,9 @@ if [[ -n "$VERSION" ]] && git rev-parse -q --verify "refs/tags/release-$VERSION"
 fi
 
 if (( UPLOAD )); then
+  [[ -n "${SITE_FTP_USER:-}" && -n "${SITE_KEYCHAIN_SERVICE:-}" ]] || die "SITE_FTP_USER / SITE_KEYCHAIN_SERVICE not set in .claude/release.env"
+  SITE_FTP_PASS=$(security find-generic-password -s "$SITE_KEYCHAIN_SERVICE" -a "$SITE_FTP_USER" -w 2>/dev/null) \
+    || die "FTP password not in Keychain (service $SITE_KEYCHAIN_SERVICE, account $SITE_FTP_USER)"
   FTP_PASS=$(security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$FTP_USER" -w 2>/dev/null) \
     || die "FTP password not in Keychain (service $KEYCHAIN_SERVICE, account $FTP_USER)"
 fi
@@ -56,15 +63,15 @@ fi
 # 2. Archive, sign with Developer ID, notarize (via Xcode's Apple login), staple
 rm -rf build/archive
 xcodegen generate --quiet
-xcodebuild -project ClaudeUsage.xcodeproj -scheme ClaudeUsage -configuration Release -derivedDataPath build \
-  -archivePath build/archive/ClaudeUsage.xcarchive -allowProvisioningUpdates -quiet archive
-xcodebuild -exportArchive -archivePath build/archive/ClaudeUsage.xcarchive -exportPath build/archive/upload \
+xcodebuild -project Clausage.xcodeproj -scheme Clausage -configuration Release -derivedDataPath build \
+  -archivePath build/archive/Clausage.xcarchive -allowProvisioningUpdates -quiet archive
+xcodebuild -exportArchive -archivePath build/archive/Clausage.xcarchive -exportPath build/archive/upload \
   -exportOptionsPlist tools/ExportOptionsUpload.plist -allowProvisioningUpdates >/dev/null 2>&1 \
   || die "uploading to Apple's notary service failed"
 echo "Submitted for notarization; waiting for Apple…"
-APP="build/archive/notarized/Claude Usage.app"
+APP="build/archive/notarized/Clausage.app"
 for i in {1..45}; do
-  out=$(xcodebuild -exportNotarizedApp -archivePath build/archive/ClaudeUsage.xcarchive \
+  out=$(xcodebuild -exportNotarizedApp -archivePath build/archive/Clausage.xcarchive \
         -exportPath build/archive/notarized 2>&1 || true)
   [[ -d "$APP" ]] && break
   [[ "$out" == *"processing"* ]] || die "notarization failed: $(echo "$out" | grep -E 'error' | head -3)"
@@ -76,7 +83,7 @@ spctl -a -t exec "$APP" || die "Gatekeeper rejects the app"
 PLIST="$APP/Contents/Info.plist"
 VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
 BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
-ZIP="ClaudeUsage-$VER-$BUILD.zip"
+ZIP="Clausage-$VER-$BUILD.zip"
 echo "Releasing $VER (build $BUILD), notarized"
 
 # 3. Zip + appcast (release/ keeps earlier zips so the appcast lists history)
@@ -90,21 +97,23 @@ echo "Signed. release/$ZIP + release/appcast.xml ready."
 
 (( UPLOAD )) || { echo "--no-upload: skipping upload."; exit 0; }
 
-# 4. Upload: zip first, appcast last, so the feed never points at a missing file.
+# 4. Upload: zip first, appcasts last, so neither feed ever points at a missing file.
+#    ftp_put <user> <password> <local file> <remote path>
 ftp_put() {
-  printf 'user = "%s:%s"\n' "$FTP_USER" "$FTP_PASS" |
-    curl -sS --fail -m 300 --ssl-reqd -K - -T "$1" "ftp://$FTP_HOST/$(basename "$1")"
+  printf 'user = "%s:%s"\n' "$1" "$2" |
+    curl -sS --fail -m 300 --ssl-reqd --ftp-create-dirs -K - -T "$3" "ftp://$FTP_HOST/$4"
 }
-ftp_put "release/$ZIP"
-ftp_put "release/appcast.xml"
-unset FTP_PASS
+ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/$ZIP" "updates/$ZIP"
+ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/appcast.xml" "updates/appcast.xml"
+ftp_put "$FTP_USER" "$FTP_PASS" "release/appcast.xml" "appcast.xml"
+unset SITE_FTP_PASS FTP_PASS
 
 # 5. Verify what the public sees
-for f in "$ZIP" appcast.xml; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" "$FEED_BASE/$f")
-  [[ "$code" == 200 ]] || die "$FEED_BASE/$f returned HTTP $code"
+for url in "$FEED_BASE/$ZIP" "$FEED_BASE/appcast.xml" "$LEGACY_FEED_BASE/appcast.xml"; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+  [[ "$code" == 200 ]] || die "$url returned HTTP $code"
 done
-echo "Published: $FEED_BASE/appcast.xml"
+echo "Published: $FEED_BASE/appcast.xml (and the legacy feed)"
 
 # 6. Record the release in git: commit the version bump and tag it.
 git add project.yml

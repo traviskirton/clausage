@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ClaudeUsageApp: App {
+struct ClausageApp: App {
     @StateObject private var model = UsageModel.shared
 
     var body: some Scene {

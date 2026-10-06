@@ -5,14 +5,15 @@
 set -e
 cd "$(dirname "$0")"
 xcodegen generate --quiet
-xcodebuild -project ClaudeUsage.xcodeproj -scheme ClaudeUsage -configuration Release \
+xcodebuild -project Clausage.xcodeproj -scheme Clausage -configuration Release \
   -derivedDataPath build -allowProvisioningUpdates -quiet build
-APP="build/Build/Products/Release/Claude Usage.app"
+APP="build/Build/Products/Release/Clausage.app"
 echo "Built $APP"
 
 if [[ "$1" == "install" ]]; then
-  pkill -x "Claude Usage" 2>/dev/null || true
-  rm -rf "/Applications/Claude Usage.app"
+  pkill -x "Clausage" 2>/dev/null || true
+  pkill -x "Claude Usage" 2>/dev/null || true   # the pre-rename app, if it's still around
+  rm -rf "/Applications/Clausage.app"
   cp -R "$APP" /Applications/
-  echo "Installed /Applications/Claude Usage.app"
+  echo "Installed /Applications/Clausage.app"
 fi

@@ -13,7 +13,7 @@ struct ClaudeSessionRecord: Codable, Equatable {
 /// Keychain storage shared by the app and the widget extension (same access group), readable after the first unlock
 /// so background refresh and widgets keep working with the screen locked.
 enum SessionStore {
-    static let accessGroup = "G3GED29J33.com.postfl.claude-usage-ios.shared"
+    static let accessGroup = "G3GED29J33.com.postfl.clausage-ios.shared"
 
     private static var base: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,

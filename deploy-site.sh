@@ -3,7 +3,8 @@
 #
 #   ./deploy-site.sh
 #
-# Uses its own FTP account, restricted to the clausage.ai document root. It lives outside git, in .claude/release.env:
+# Uses the FTP account rooted at the clausage.ai document root (shared with release.sh, which uploads to updates/).
+# It lives outside git, in .claude/release.env:
 #   FTP_HOST=...               (shared with release.sh: the name on the FTP server's TLS certificate)
 #   SITE_FTP_USER=...
 #   SITE_KEYCHAIN_SERVICE=...  (login Keychain item holding that account's password)

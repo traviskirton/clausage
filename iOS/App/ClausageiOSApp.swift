@@ -4,8 +4,8 @@ import BackgroundTasks
 import UIKit
 
 @main
-struct ClaudeUsageiOSApp: App {
-    nonisolated static let refreshID = "com.postfl.claude-usage-ios.refresh"
+struct ClausageiOSApp: App {
+    nonisolated static let refreshID = "com.postfl.clausage-ios.refresh"
     @Environment(\.scenePhase) private var phase
 
     init() {

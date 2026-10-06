@@ -81,7 +81,7 @@ struct SettingsScreen: View {
             Section {
                 toggle("Refresh in background", nil, $background) {
                     PhonePrefs.backgroundRefresh = $0
-                    ClaudeUsageiOSApp.scheduleRefresh()
+                    ClausageiOSApp.scheduleRefresh()
                 }
             } header: {
                 SectionTitle("Widgets")

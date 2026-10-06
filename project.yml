@@ -1,4 +1,4 @@
-name: ClaudeUsage
+name: Clausage
 options:
   bundleIdPrefix: com.postfl
   deploymentTarget:
@@ -28,14 +28,14 @@ settings:
     STRING_CATALOG_GENERATE_SYMBOLS: YES
     ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOL_EXTENSIONS: YES
 targets:
-  ClaudeUsage:
+  Clausage:
     type: application
     platform: macOS
     sources: [App, Shared, Resources, design/clausage-icon.icon]
     settings:
       base:
-        PRODUCT_NAME: Claude Usage
-        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.claude-usage
+        PRODUCT_NAME: Clausage
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage
         ASSETCATALOG_COMPILER_APPICON_NAME: clausage-icon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
@@ -43,38 +43,37 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        # Display name only: the bundle stays "Claude Usage.app" with the same IDs (build, release, Sparkle, login item).
         CFBundleName: Clausage
         CFBundleDisplayName: Clausage
-        SUFeedURL: https://updates.postfl.com/claude-usage/appcast.xml
+        SUFeedURL: https://clausage.ai/updates/appcast.xml
         SUPublicEDKey: hZIfbhuLEa1k5VbIA5whEo3xOS1xzTdno5TYCDysRf0=
         SUEnableInstallerLauncherService: true
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 21600
     entitlements:
-      path: App/ClaudeUsage.entitlements
+      path: App/Clausage.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.temporary-exception.mach-lookup.global-name:
-          - com.postfl.claude-usage-spks
-          - com.postfl.claude-usage-spki
+          - com.postfl.clausage-spks
+          - com.postfl.clausage-spki
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-only: true
         com.apple.security.files.bookmarks.app-scope: true
-        com.apple.security.application-groups: [G3GED29J33.com.postfl.claude-usage]
+        com.apple.security.application-groups: [G3GED29J33.com.postfl.clausage]
     dependencies:
-      - target: ClaudeUsageWidget
+      - target: ClausageWidget
         embed: true
       - package: Sparkle
       - package: KeyboardShortcuts
-  ClaudeUsageWidget:
+  ClausageWidget:
     type: app-extension
     platform: macOS
     sources: [Widget, Shared, SharedUI]
     settings:
       base:
-        PRODUCT_NAME: ClaudeUsageWidget
-        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.claude-usage.widget
+        PRODUCT_NAME: ClausageWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage.widget
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Clausage
     info:
@@ -83,18 +82,18 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
-      path: Widget/ClaudeUsageWidget.entitlements
+      path: Widget/ClausageWidget.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.application-groups: [G3GED29J33.com.postfl.claude-usage]
-  ClaudeUsageiOS:
+        com.apple.security.application-groups: [G3GED29J33.com.postfl.clausage]
+  ClausageiOS:
     type: application
     platform: iOS
     sources: [iOS/App, iOS/Shared, Shared, SharedUI, design/clausage-icon.icon]
     settings:
       base:
-        PRODUCT_NAME: Claude Usage
-        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.claude-usage-ios
+        PRODUCT_NAME: Clausage
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios
         ASSETCATALOG_COMPILER_APPICON_NAME: clausage-icon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -104,24 +103,24 @@ targets:
     info:
       path: iOS/App/Info.plist
       properties:
-        BGTaskSchedulerPermittedIdentifiers: [com.postfl.claude-usage-ios.refresh]
+        BGTaskSchedulerPermittedIdentifiers: [com.postfl.clausage-ios.refresh]
         UIBackgroundModes: [fetch]
     entitlements:
-      path: iOS/App/ClaudeUsageiOS.entitlements
+      path: iOS/App/ClausageiOS.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.postfl.claude-usage]
-        keychain-access-groups: ["$(AppIdentifierPrefix)com.postfl.claude-usage-ios.shared"]
+        com.apple.security.application-groups: [group.com.postfl.clausage]
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.postfl.clausage-ios.shared"]
     dependencies:
-      - target: ClaudeUsageWidgetiOS
+      - target: ClausageWidgetiOS
         embed: true
-  ClaudeUsageWidgetiOS:
+  ClausageWidgetiOS:
     type: app-extension
     platform: iOS
     sources: [iOS/Widget, iOS/Shared, Shared, SharedUI]
     settings:
       base:
-        PRODUCT_NAME: ClaudeUsageWidget
-        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.claude-usage-ios.widget
+        PRODUCT_NAME: ClausageWidget
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios.widget
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Clausage
     info:
@@ -130,10 +129,10 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
-      path: iOS/Widget/ClaudeUsageWidgetiOS.entitlements
+      path: iOS/Widget/ClausageWidgetiOS.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.postfl.claude-usage]
-        keychain-access-groups: ["$(AppIdentifierPrefix)com.postfl.claude-usage-ios.shared"]
+        com.apple.security.application-groups: [group.com.postfl.clausage]
+        keychain-access-groups: ["$(AppIdentifierPrefix)com.postfl.clausage-ios.shared"]
   ClausageTests:
     type: bundle.unit-test
     platform: macOS
@@ -146,7 +145,7 @@ targets:
       - App/ContributorsScan.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.claude-usage.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage.tests
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   ClausageTests:
@@ -155,11 +154,11 @@ schemes:
         ClausageTests: [test]
     test:
       targets: [ClausageTests]
-  ClaudeUsage:
+  Clausage:
     build:
       targets:
-        ClaudeUsage: all
-  ClaudeUsageiOS:
+        Clausage: all
+  ClausageiOS:
     build:
       targets:
-        ClaudeUsageiOS: all
+        ClausageiOS: all

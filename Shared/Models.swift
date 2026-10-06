@@ -142,9 +142,9 @@ struct Account: Codable, Identifiable, Equatable {
 /// App → widget hand-off, stored in the shared App Group.
 enum SharedStore {
     #if os(iOS)
-    static let groupID = "group.com.postfl.claude-usage"
+    static let groupID = "group.com.postfl.clausage"
     #else
-    static let groupID = "G3GED29J33.com.postfl.claude-usage"
+    static let groupID = "G3GED29J33.com.postfl.clausage"
     #endif
 
     struct Snapshot: Codable {

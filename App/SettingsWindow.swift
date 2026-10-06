@@ -32,7 +32,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             // SwiftUI then grows it upward from the bottom-left (it jumped to the top of the screen).
             // Reopens where it was last left; centered the first time. All before it is shown.
             w.setFrame(NSRect(x: 0, y: 0, width: 760, height: 600), display: false)   // full-size content: the frame is the content
-            let frameName = "ClaudeUsageSettings"
+            let frameName = "ClausageSettings"
             if w.setFrameUsingName(frameName) {
                 // A saved frame may carry an older size; keep its top-left and use the current one.
                 var f = w.frame

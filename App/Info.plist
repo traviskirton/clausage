@@ -25,7 +25,7 @@
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://updates.postfl.com/claude-usage/appcast.xml</string>
+	<string>https://clausage.ai/updates/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>hZIfbhuLEa1k5VbIA5whEo3xOS1xzTdno5TYCDysRf0=</string>
 	<key>SUScheduledCheckInterval</key>
