@@ -1,0 +1,65 @@
+import Foundation
+
+/// Where the iOS side gets usage numbers. Only the app and `RefreshUsageIntent` fetch; widgets only read the App Group snapshot.
+enum UsageSource {
+    enum Outcome {
+        case ok
+        case signedOut
+        case failed(String)
+    }
+
+    /// The snapshot in the App Group.
+    static func snapshot() -> SharedStore.Snapshot? { SharedStore.load() }
+
+    /// Fetch fresh numbers with the saved session and write them to the App Group.
+    /// A network or server error keeps the last snapshot (it just gets older); a real sign-out clears the session.
+    @MainActor
+    static func refresh() async -> Outcome {
+        guard let record = SessionStore.load() else {
+            markSignedOut()
+            return .signedOut
+        }
+        let transport = CookieTransport(record: record)
+        do {
+            let report = try await UsageClient.fetch(session: transport, orgID: record.orgID)
+            var snap = SharedStore.load() ?? .init(limits: [], updated: Date(), connected: true)
+            snap.limits = report.limits
+            snap.updated = Date()
+            snap.connected = true
+            snap.breakdown = report.breakdown
+            snap.weekly = report.weekly
+            snap.unparsedLimits = report.unparsed
+            snap.cleared = nil
+            if let w = report.weekly {
+                var history = HistoryStore.load()
+                history.record(w, at: Date(), owner: record.orgID)
+                HistoryStore.save(history)
+            }
+            if snap.credits != nil, let on = report.spendEnabled { snap.credits?.enabled = on }
+            // Usage credits: two extra read-only requests, at most hourly.
+            if snap.credits.map({ Date().timeIntervalSince($0.fetched) > 3600 }) ?? true,
+               let credits = await UsageClient.credits(transport, orgID: record.orgID) {
+                snap.credits = credits
+            }
+            // The plan tier comes from the org list: read it after sign-in, then at most daily.
+            if snap.planUpdated.map({ Date().timeIntervalSince($0) > 86_400 }) ?? true,
+               let org = try? await UsageClient.resolveOrg(transport) {
+                snap.plan = org.plan
+                snap.planUpdated = Date()
+                if snap.email == nil { snap.email = await UsageClient.accountEmail(transport) }
+            }
+            SharedStore.save(snap)
+            return .ok
+        } catch UsageError.unauthorized {
+            SessionStore.clear()
+            markSignedOut()
+            return .signedOut
+        } catch {
+            return .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    static func markSignedOut() {
+        SharedStore.save(.init(limits: [], updated: Date(), connected: false))
+    }
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="-4 -4 32 32">
+  <defs>
+    <g id="rays">
+      <!-- canvas-corner markers: keep the group as large as the canvas so the halo stroke is not cropped; they fall outside the rounded icon shape -->
+      <rect x="-4" y="-4" width="0.5" height="0.5"/>
+      <rect x="27.5" y="27.5" width="0.5" height="0.5"/>
+      <path id="ray-11" d="M6.014 9.201 L4.423 8.148 L3.087 7.176 L2.365 6.684 L2.001 6.223 L1.843 5.215 L2.498 4.493 L3.379 4.553 L3.603 4.614 L6.402 6.776 L7.28 7.422 L11.799 10.885 A0.958 0.958 0 0 1 10.689 12.445 Z"/>
+      <path id="ray-12" d="M8.252 6.65 L7.902 6.017 L6.457 3.527 L5.813 2.495 L5.643 1.876 L5.593 1.647 L5.569 1.514 L5.552 1.381 L5.54 1.147 L6.287 0.134 L6.7 0 L7.695 0.134 L8.114 0.498 L8.734 1.913 L9.735 4.141 L10.403 5.441 L12.733 10.492 A0.967 0.967 0 0 1 11.047 11.44 Z"/>
+    </g>
+  </defs>
+  <!-- halo: the same shapes with a thick, faded stroke, so it reads as an outline around them.
+       Faded with stroke-opacity, not group opacity: the icon renderer clips a faded group to the shapes' bounds and cut the halo off. -->
+  <use href="#rays" xlink:href="#rays" fill="none" stroke="#FF4A1C" stroke-width="2.5" stroke-linejoin="round" stroke-opacity=".2"/>
+  <!-- solid rays on top -->
+  <use href="#rays" xlink:href="#rays" fill="#FF4A1C"/>
+</svg>

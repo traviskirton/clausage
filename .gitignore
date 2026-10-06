@@ -1,0 +1,17 @@
+.build/
+build/
+.DS_Store
+ClaudeUsage.xcodeproj/
+release/
+__pycache__/
+build-ios/
+research/*.har
+build-dbg/
+# Local only: research, design source, dev reports, release infrastructure
+research/
+dev-reports/
+design/*
+!design/clausage-icon.icon/
+.claude/release.md
+.claude/release.env
+.claude/settings.local.json

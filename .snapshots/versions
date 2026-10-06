@@ -1,0 +1,23 @@
+# Snapshots
+
+To switch: `snap <tag>`
+
+---
+
+## v1-menubar-basics
+
+**Menubar usage app (SwiftPM)**
+
+Claude Usage menubar app built as a Swift package: logo icon, popover with session/weekly limits, first-run consent prompt, launch at login, claude.ai sign-in window. Limitations: the claude.ai sign-in and usage endpoint were not verified end to end; no settings window, notifications, forecast or widgets.
+
+## v2-pre-clausage
+
+**Claude Usage before the Clausage rebrand**
+
+Mac menubar app (popover, settings, accounts, notifications, Claude Code tab, Sparkle) plus the iOS app and widgets with the in-app claude.ai sign-in and cookie data path. Feasibility research and the Clausage design handoff are committed. Limitations: the old blue/accent styling, no plan badge, product breakdown, usage credits or weekly history; the large widget's day chart still uses fixture data.
+
+## v3-clausage-brand
+
+**Clausage brand and new usage sections (iOS + macOS)**
+
+Bricolage type and Paper/Ink/Sand palette across both apps; plan badge, Limiting now chip, weekly product split, running-total chart (each app records its own history), usage credits (iPhone), Claude Code contributors pane (Mac), branded widgets, popover, menu bar and Settings. Limitations: App Icon alternates and the privacy-policy link aren't built; some Mac control tints and the iPhone pull-to-refresh were only verified offscreen/in the simulator.
