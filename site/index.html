@@ -3,15 +3,214 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clausage</title>
+<title>Clausage: your Claude limits, tallied</title>
+<meta name="description" content="Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, and tells you when you’ll run out at your current pace.">
+<meta name="theme-color" content="#FFFCF6">
+<meta property="og:title" content="Clausage: your Claude limits, tallied">
+<meta property="og:description" content="Your Claude plan limits in the Mac menu bar and on your iPhone.">
+<meta property="og:image" content="https://clausage.ai/assets/social-preview.png">
+<meta property="og:url" content="https://clausage.ai/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/bricolage-grotesque-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
-<h1>Clausage</h1>
-<p>Your Claude plan limits in the Mac menu bar and on your iPhone.</p>
-<ul>
-<li><a href="/privacy/">Privacy</a></li>
-<li><a href="/acknowledgements/">Acknowledgements</a></li>
-<li><a href="https://github.com/traviskirton/clausage">Source on GitHub</a></li>
-</ul>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="t5" viewBox="0 0 100 100"><g stroke="currentColor" stroke-width="8" stroke-linecap="round" fill="none"><path d="M30 26 Q28 50 28 74"></path><path d="M42 25 Q42 50 41 75"></path><path d="M54 26 Q55 50 54 74"></path><path d="M66 25 Q66 50 67 75"></path></g><path d="M18 66 Q48 54 82 34" stroke="#FF4A1C" stroke-width="9" stroke-linecap="round" fill="none"></path></symbol>
+<symbol id="fill11" viewBox="-2 -2 28 28"><path d="M6.014 9.201 L4.423 8.148 L3.087 7.176 L2.365 6.684 L2.001 6.223 L1.843 5.215 L2.498 4.493 L3.379 4.553 L3.603 4.614 L6.402 6.776 L7.28 7.422 L11.799 10.885 A0.958 0.958 0 0 1 10.689 12.445 Z" fill="var(--ember)"></path><path d="M8.252 6.65 L7.902 6.017 L6.457 3.527 L5.813 2.495 L5.643 1.876 L5.593 1.647 L5.569 1.514 L5.552 1.381 L5.54 1.147 L6.287 0.134 L6.7 0 L7.695 0.134 L8.114 0.498 L8.734 1.913 L9.735 4.141 L10.403 5.441 L12.733 10.492 A0.967 0.967 0 0 1 11.047 11.44 Z" fill="var(--ember)"></path><path d="M12.569 5.495 L12.601 5.209 L12.832 2.514 L12.911 1.755 L13.287 0.844 L14.034 0.352 L14.617 0.631 L15.096 1.317 L14.744 3.612 L14.32 5.818 L13.28 11.573 A0.623 0.623 0 0 1 12.055 11.347 Z" fill="var(--ember)"></path><path d="M15.599 6.486 L16.912 4.845 L17.64 4.025 L18.49 3.121 L19.037 2.69 L20.069 2.69 L20.828 3.819 L20.488 4.985 L19.425 6.332 L18.545 7.474 L17.793 8.485 L14.826 12.347 A1.599 1.599 0 0 1 12.462 10.193 Z" fill="var(--ember)"></path><path d="M18.308 10.294 L19.607 10.018 L21.149 9.738 L22.989 9.423 L23.821 9.811 L23.912 10.206 L23.584 11.013 L21.617 11.499 L19.31 11.961 L18.606 12.127 L13.215 13.254 A0.981 0.981 0 0 1 12.9 11.317 Z" fill="var(--ember)"></path><path d="M18.422 13.047 L19.711 13.047 L22.728 13.272 L23.517 13.794 L23.991 14.432 L23.912 14.917 L22.698 15.537 L18.127 14.45 L12 12.992 A0.153 0.153 0 0 1 12.063 12.693 Z" fill="var(--ember)"></path><path d="M17.443 15.638 L18.836 16.897 L21.344 19.228 L21.471 19.805 L21.15 20.26 L20.81 20.212 L18.606 18.554 L17.756 17.807 L16.494 16.745 L12.165 13.135 A0.862 0.862 0 0 1 13.287 11.825 Z" fill="var(--ember)"></path><path d="M16.176 17.05 L18.49 20.527 L18.612 21.608 L18.442 21.96 L17.835 22.173 L17.167 22.051 L15.795 20.127 L14.485 18.119 L11.43 13.566 A1.011 1.011 0 0 1 13.139 12.486 Z" fill="var(--ember)"></path><path d="M12.871 18.551 L12.425 23.35 L12.109 23.721 L11.381 24 L10.774 23.539 L10.452 22.792 L10.774 21.316 L11.351 18.476 L12.565 12.563 A0.43 0.43 0 0 1 13.423 12.606 Z" fill="var(--ember)"></path><path d="M9.647 18.22 L8.169 20.218 L6.445 22.063 L6.032 22.227 L5.316 21.857 L5.382 21.195 L5.783 20.606 L8.169 17.57 L8.326 17.365 L11.792 12.952 A0.797 0.797 0 0 1 13.13 13.818 Z" fill="var(--ember)"></path><path d="M7.229 16.552 L4.138 18.56 L3.008 18.706 L2.523 18.25 L2.583 17.504 L2.814 17.261 L4.721 15.949 L6.248 15.095 L11.091 12.118 A0.808 0.808 0 0 1 11.994 13.458 Z" fill="var(--ember)"></path><path d="M5.482 12.819 L3.379 12.732 L1.114 12.61 L0.543 12.489 L0.009 11.785 L0.064 11.432 L0.543 11.111 L1.229 11.171 L5.024 11.432 L5.51 11.461 L11.368 11.862 A0.615 0.615 0 0 1 11.343 13.092 Z" fill="var(--glass)"></path></symbol>
+</defs></svg>
+
+<header class="wrap nav">
+<a class="logo" href="#top"><img class="mark" src="/assets/mark.svg" width="30" height="30" alt=""><span class="wordmark">clausage</span></a>
+<nav>
+<a href="#widgets">Widgets</a>
+<a href="#privacy">Privacy</a>
+<a href="https://github.com/traviskirton/clausage">GitHub</a>
+<a class="pill" href="#download">Download</a>
+</nav>
+</header>
+
+<main>
+<section id="top" class="wrap hero">
+<div class="hero-copy">
+<h1 class="h1">See how the sausage gets used.</h1>
+<p class="hero-lede">A tally of how much you’ve eaten, and what’s left on your plate. Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, and tells you when you’ll run out if you keep up the sizzle.</p>
+<div class="buttons">
+<a class="button button-dark" href="#download" aria-label="Download for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
+<a class="button button-light" href="#download" aria-label="Get it for iPhone"><span class="icon-phone" aria-hidden="true"></span>iPhone</a>
+</div>
+<span class="fine">Open source · Independent, not made by Anthropic · No actual sausages</span>
+</div>
+
+<div class="desktop" role="img" aria-label="Clausage open from the Mac menu bar: current session 96%, all models 64%, Fable 88%">
+<div class="menubar" aria-hidden="true">
+<span class="status-item"><svg width="19" height="19" style="--glass:rgba(0,0,0,.32);--ember:rgba(0,0,0,.85)"><use href="#fill11"></use></svg></span>
+<svg width="19" height="14" viewBox="0 0 17 12"><path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill="rgba(0,0,0,.85)"></path><circle cx="8.5" cy="10.5" r="1.5" fill="rgba(0,0,0,.85)"></circle></svg>
+<span class="clock">Sun Oct 4  9:41 AM</span>
+</div>
+<div class="popover-slot" aria-hidden="true">
+<div class="popover">
+<div class="popover-head"><img class="mark" src="/assets/mark.svg" width="15" height="15" alt=""><span class="wordmark">clausage</span><span class="plan">Max 5×</span></div>
+<div class="meter"><div class="meter-top"><span>Current session</span><span class="num">96%</span></div><div class="bar ticked red" style="--v:96%;--pace:78%"></div></div>
+<div class="meter"><div class="meter-top"><span>All models</span><span class="num">64%</span></div><div class="bar ticked gray" style="--v:64%;--pace:68%"></div></div>
+<div class="meter"><div class="meter-top"><span>Fable</span><span class="num">88%</span></div><div class="bar ticked orange" style="--v:88%;--pace:68%"></div></div>
+<span class="popover-note"><b>57%</b> of this week came from Claude Code</span>
+<div class="popover-foot"><hr><div><svg width="13" height="13"><use href="#t5"></use></svg><span>Updated 9:40 AM</span><span class="gear">⚙︎</span></div></div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="band">
+<div class="wrap section">
+<div class="section-head">
+<h2 class="h2">Frankly, it keeps quiet.</h2>
+<p class="lede">One link per limit. Under 85%, Clausage lets you eat in peace. Past that, it tells you when you’ll clean your plate, but only if that’s before the reset serves seconds.</p>
+</div>
+<div class="two-col">
+<div class="card forecast-card">
+<div class="forecast-row">
+<div class="meter-top"><span>Fable</span><span class="num">88%</span></div>
+<div class="bar orange" style="--v:88%;--pace:68%"></div>
+<span class="forecast-out out-orange">Out ~Mon 9:40 PM</span>
+</div>
+<div class="captions">
+<div><span class="title">The link</span><span class="small">How much you’ve eaten.</span></div>
+<div><span class="title">The tick</span><span class="small">How much you’d have eaten by now at an even pace. Ahead of it? Slow down and chew.</span></div>
+<div><span class="title">The forecast</span><span class="small">When you’ll clean your plate at this pace. The “~” means it’s a guess, not gospel.</span></div>
+</div>
+</div>
+<div class="stack">
+<div class="card legend">
+<div class="legend-row gray"><span class="swatch"></span><div><span class="title">Under 85%</span><span class="small">Warm gray. Plenty left on the plate.</span></div></div>
+<div class="legend-row orange"><span class="swatch"></span><div><span class="title">85% and up</span><span class="small">Orange. Getting full, with a clean-plate time if it lands before the reset.</span></div></div>
+<div class="legend-row red"><span class="swatch"></span><div><span class="title">95% and up</span><span class="small">Red. Last bites. Wrap it up, or wait for seconds.</span></div></div>
+</div>
+<div class="notification">
+<div class="app-icon"><img class="mark" src="/assets/mark.svg" width="32" height="32" alt=""></div>
+<div class="notification-text"><span class="title">Fable is at 88%</span><span>At this pace you’ll reach the limit Mon 9:40 PM.</span></div>
+<span class="notification-time">now</span>
+</div>
+<span class="small">Optional pings at 85% and 95%, when you’re on track to clean your plate early, and when a limit resets and seconds are served.</span>
+</div>
+</div>
+</div>
+</section>
+
+<section id="widgets" class="wrap section">
+<div class="section-head">
+<h2 class="h2">Links on every screen.</h2>
+<p class="lede">Your limits sit on your desktop, Home Screen and Lock Screen, so one glance tells you if there’s room for another bite before you start a big task.</p>
+</div>
+<div class="widgets">
+<div class="widget widget-medium" role="img" aria-label="Medium widget: current session 96%, out around 11:41 AM; all models 64%; Fable 88%, out around Monday 9:40 PM">
+<div class="meter"><div class="meter-top"><span>Current session</span><span class="num">96%</span></div><div class="bar ticked red" style="--v:96%;--pace:78%;--ring:#FBF5EC"></div><span class="out out-red">Out ~11:41 AM</span></div>
+<div class="meter"><div class="meter-top"><span>All models</span><span class="num">64%</span></div><div class="bar ticked gray" style="--v:64%;--pace:68%;--ring:#F8F1E6"></div></div>
+<div class="meter"><div class="meter-top"><span>Fable</span><span class="num">88%</span></div><div class="bar ticked orange" style="--v:88%;--pace:68%;--ring:#F5EDE1"></div><span class="out out-orange">Out ~Mon 9:40 PM</span></div>
+</div>
+<div class="widget widget-small" role="img" aria-label="Small widget: session 96%, all models 64%, Fable 88%">
+<div class="meter"><div class="meter-top"><span>Session</span><span class="num">96%</span></div><div class="bar red" style="--v:96%"></div><span class="out out-red">Out ~11:41 AM</span></div>
+<div class="meter"><div class="meter-top"><span>All models</span><span class="num">64%</span></div><div class="bar gray" style="--v:64%"></div></div>
+<div class="meter"><div class="meter-top"><span>Fable</span><span class="num">88%</span></div><div class="bar orange" style="--v:88%"></div></div>
+</div>
+<div class="lock" role="img" aria-label="Lock Screen: session 96%, out around 11:41 AM, with gauges for session 96, all models 64 and Fable 88">
+<span class="lock-inline">Session 96% · Out ~11:41 AM</span>
+<span class="lock-time">9:41</span>
+<div class="gauges">
+<div class="gauge" style="--v:96%"><span>96<small>SESS</small></span></div>
+<div class="gauge" style="--v:64%"><span>64<small>ALL</small></span></div>
+<div class="gauge" style="--v:88%"><span>88<small>FABLE</small></span></div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="band">
+<div class="wrap section">
+<div class="section-head">
+<h2 class="h2">The meat of your week.</h2>
+<p class="lede">See your week fill up day by day against an even pace, so you know whether you’re grazing or going back for thirds. Plus which product had the biggest appetite.</p>
+</div>
+<div class="week">
+<div class="card chart-card">
+<div class="card-head"><span>All models · this week</span><span>Running total</span></div>
+<div class="chart">
+<svg viewBox="0 0 560 190" role="img" aria-label="Running total for all models this week, at 64% on Sunday, just under an even pace to the limit">
+<line x1="20" y1="20" x2="540" y2="20" stroke="#8A8278" stroke-width="1.5" stroke-dasharray="1 5" stroke-linecap="round"></line>
+<text x="20" y="12" font-size="11" fill="#766E64" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif">Limit</text>
+<line x1="40" y1="148.6" x2="520" y2="20" stroke="#C9BEAD" stroke-width="1.5" stroke-dasharray="6 5"></line>
+<line x1="20" y1="170" x2="540" y2="170" stroke="#E6DCC8" stroke-width="1"></line>
+<polyline points="40,156.5 120,137 200,117.5 280,93.5 360,74" fill="none" stroke="#7C746A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<circle cx="40" cy="156.5" r="3" fill="#FFFCF6" stroke="#7C746A" stroke-width="2"></circle>
+<circle cx="120" cy="137" r="3" fill="#FFFCF6" stroke="#7C746A" stroke-width="2"></circle>
+<circle cx="200" cy="117.5" r="3" fill="#FFFCF6" stroke="#7C746A" stroke-width="2"></circle>
+<circle cx="280" cy="93.5" r="3" fill="#FFFCF6" stroke="#7C746A" stroke-width="2"></circle>
+<circle cx="360" cy="74" r="5.5" fill="#7C746A"></circle>
+<text x="360" y="56" text-anchor="middle" font-size="15" font-weight="700" fill="#26231F" stroke="#FFFCF6" stroke-width="4" paint-order="stroke" style="font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.03em">64%</text>
+</svg>
+<div class="days" aria-hidden="true"><span>W</span><span>T</span><span>F</span><span>S</span><span class="today">S</span><span class="future">M</span><span class="future">T</span></div>
+</div>
+<span class="small">The dashed line is an even pace to 100% by Tue 5:00 AM. You’re just under it.</span>
+</div>
+<div class="card product-card">
+<span class="card-title">This week by product</span>
+<div class="product-big"><span class="num">57%</span><span>came from Claude Code</span></div>
+<div class="rule"></div>
+<span class="small">Cowork <b>30%</b> · Chat <b>10%</b> · Other <b>3%</b></span>
+</div>
+</div>
+</div>
+</section>
+
+<section class="wrap section code">
+<div class="code-copy">
+<span class="chip">Mac only</span>
+<h2 class="h2">What’s in the grinder.</h2>
+<p class="lede">Turn on session scanning and Clausage breaks down what’s eating your Claude Code limit, with a tip for each: parallel sessions, long context, your top skills and subagents, and how many times you hit the wall this week.</p>
+<p class="code-note">It reads ~/.claude on your Mac. Only totals are kept, never prompts or code, and nothing leaves the Mac.</p>
+</div>
+<div class="code-panel">
+<div class="group"><span class="group-title">What’s driving your usage</span><div class="group-body">
+<div class="driver"><span class="num">50%</span><div><span>While 4+ sessions ran in parallel</span><span>All sessions share one limit. Queue the ones you don’t need at the same time.</span></div></div>
+<hr>
+<div class="driver"><span class="num">50%</span><div><span>At more than 150k context</span><span>Long sessions cost more, even when cached. /compact mid-task, /clear between tasks.</span></div></div>
+</div></div>
+<div class="group"><span class="group-title">Limit hits this week</span><div class="group-body">
+<div class="hits"><span>5-hour limit</span><span class="num">56</span></div>
+<hr>
+<div class="hits"><span>Weekly limit</span><span class="num">1</span></div>
+</div></div>
+</div>
+</section>
+
+<section id="privacy" class="band-night">
+<div class="wrap section">
+<div class="section-head">
+<h2 class="h2">Nothing funny in the casing.</h2>
+<p class="lede">You sign in on claude.ai. Clausage reads the same usage page you’d check yourself, and nothing else.</p>
+</div>
+<div class="facts">
+<div><span>What it reads</span><span>Your plan, your limits and how much of each you’ve used, from claude.ai.</span></div>
+<div><span>What it never sees</span><span>Your password. Sign-in happens on claude.ai, not in Clausage.</span></div>
+<div><span>Where it lives</span><span>On your device. The iPhone app is standalone, with no iCloud sync.</span></div>
+</div>
+</div>
+</section>
+
+<section id="download" class="wrap download">
+<svg width="120" height="120" style="color:#26231F" aria-hidden="true"><use href="#t5"></use></svg>
+<h2 class="h2">Start your tally.</h2>
+<p class="lede">Four links, one slash, zero surprises.</p>
+<div class="buttons">
+<a class="button button-dark" href="#download" aria-label="Download for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
+<a class="button button-light" href="#download" aria-label="Get it for iPhone"><span class="icon-phone" aria-hidden="true"></span>iPhone</a>
+</div>
+<footer class="footer">
+<span class="fine">Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic.</span>
+<nav><a href="https://github.com/traviskirton/clausage">GitHub</a><a href="#privacy">Privacy</a><a href="mailto:travis@postfl.com?subject=Clausage%20feedback">Send feedback</a></nav>
+</footer>
+</section>
+</main>
 </body>
 </html>
