@@ -57,6 +57,17 @@ enum SettingsColor {
     }
 }
 
+/// Sidebar card geometry, shared with `SettingsWindow`, which puts the traffic lights in the card's first row.
+enum SettingsSidebar {
+    static let cardInset: CGFloat = 8         // card from the window edge
+    static let cardPadding: CGFloat = 10      // rows from the card edge, top and bottom alike
+    static let rowPadding: CGFloat = 8        // tile from the row edge
+    static let rowHeight: CGFloat = 36
+    /// Window coordinates (from the top-left) of the traffic-lights row and of the row tiles' leading edge.
+    static var buttonsRowTop: CGFloat { cardInset + cardPadding }
+    static var tileLeading: CGFloat { cardInset + cardPadding + rowPadding }
+}
+
 /// The Settings window: an inset sidebar card (About pinned to the bottom) and content panes of section labels above
 /// group boxes. Selected states are Ember; controls are drawn here rather than native so no system blue shows through.
 struct SettingsView: View {
@@ -91,7 +102,9 @@ struct SettingsView: View {
         .background(SettingsColor.window)
         .tint(SettingsColor.ember)
         .buttonStyle(SoftButtonStyle())
-        .frame(width: 760, height: 600)
+        .focusEffectDisabled()      // the focus ring is the system accent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)      // the window sets the size (760 × 600); a fixed size here makes SwiftUI add the title bar to it
+        .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
 
     @ViewBuilder private var pane: some View {
@@ -106,13 +119,14 @@ struct SettingsView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Color.clear.frame(height: 17)        // the traffic lights (bottom at 23pt) sit here; General starts 12pt below
+        let m = SettingsSidebar.self
+        return VStack(alignment: .leading, spacing: 3) {
+            Color.clear.frame(height: m.rowHeight)       // the window's traffic lights, placed here by SettingsWindow
             ForEach(SettingsTab.allCases.filter { $0 != .about }) { item($0) }
             Spacer()
             item(.about)
         }
-        .padding(10)
+        .padding(m.cardPadding)
         .frame(width: 190)
         .frame(maxHeight: .infinity)
         .background {
@@ -122,7 +136,7 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(SettingsColor.hairline, lineWidth: 0.5))
         }
-        .padding(8)
+        .padding(m.cardInset)
     }
 
     private func item(_ t: SettingsTab) -> some View {
@@ -138,7 +152,8 @@ struct SettingsView: View {
                 Text(t.rawValue).font(.system(size: 13, weight: selected ? .medium : .regular)).foregroundStyle(SettingsColor.text)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 8).padding(.vertical, 7)
+            .padding(.horizontal, SettingsSidebar.rowPadding).padding(.vertical, 7)
+            .frame(height: SettingsSidebar.rowHeight)
             .background(selected ? SettingsColor.selectedRow : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(Rectangle())
         }
