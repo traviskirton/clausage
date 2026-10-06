@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Clausage: your Claude limits, tallied</title>
-<meta name="description" content="Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, and tells you when you’ll run out at your current pace.">
+<meta name="description" content="Clausage keeps your Claude plan limits in the Mac menu bar, and tells you when you’ll run out at your current pace. Free and open source. iPhone coming soon.">
 <meta name="theme-color" content="#FFFCF6">
 <meta property="og:title" content="Clausage: your Claude limits, tallied">
-<meta property="og:description" content="Your Claude plan limits in the Mac menu bar and on your iPhone.">
+<meta property="og:description" content="Your Claude plan limits in the Mac menu bar. Free, open source, iPhone coming soon.">
 <meta property="og:image" content="https://clausage.ai/assets/social-preview.png">
 <meta property="og:url" content="https://clausage.ai/">
 <meta name="twitter:card" content="summary_large_image">
@@ -35,12 +35,13 @@
 <section id="top" class="wrap hero">
 <div class="hero-copy">
 <h1 class="h1">See how the sausage gets used.</h1>
-<p class="hero-lede">A tally of how much you’ve eaten, and what’s left on your plate. Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, and tells you when you’ll run out if you keep up the sizzle.</p>
+<p class="hero-lede">A tally of how much you’ve eaten, and what’s left on your plate. Clausage keeps your Claude plan limits in the Mac menu bar (and soon on your iPhone), and tells you when you’ll run out if you keep up the sizzle.</p>
 <div class="buttons">
-<a class="button button-dark" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
-<a class="button button-light" href="#download" aria-label="Get it for iPhone"><span class="icon-phone" aria-hidden="true"></span>iPhone</a>
+<a class="button button-dark on-mac" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
+<a class="button button-dark on-phone send-to-mac" href="mailto:?subject=Clausage%20for%20Mac&amp;body=https%3A%2F%2Fclausage.ai%2F" aria-label="Send the Clausage link to your Mac"><span class="icon-laptop" aria-hidden="true"></span>Send it to my Mac</a>
+<a class="button button-light" href="https://www.instagram.com/clau.sage/" aria-label="iPhone app coming soon: follow @clau.sage on Instagram to hear first"><span class="icon-phone" aria-hidden="true"></span>iPhone <span class="soon">soon</span></a>
 </div>
-<span class="fine"><b class="fine-strong">For Claude Pro and Max</b> · Open source · Independent, not made by Anthropic · No actual sausages</span>
+<span class="fine"><b class="fine-strong">For Claude Pro and Max</b> · Free · Open source · Independent, not made by Anthropic · No actual sausages</span>
 </div>
 
 <div class="desktop" role="img" aria-label="Clausage open from the Mac menu bar: current session 96%, all models 64%, Fable 88%">
@@ -100,6 +101,7 @@
 
 <section id="widgets" class="wrap section">
 <div class="section-head">
+<span class="chip">iPhone coming soon</span>
 <h2 class="h2">Links on every screen.</h2>
 <p class="lede">Your limits sit on your desktop, Home Screen and Lock Screen, so one glance tells you if there’s room for another bite before you start a big task.</p>
 </div>
@@ -202,9 +204,12 @@
 <svg width="120" height="120" style="color:#26231F" aria-hidden="true"><use href="#t5"></use></svg>
 <h2 class="h2">Start your tally.</h2>
 <p class="lede">Four links, one slash, zero surprises.</p>
+<p class="fine on-phone">Clausage runs on your Mac. Send yourself the link, or AirDrop it.</p>
+<p class="fine">iPhone app coming soon. <a href="https://www.instagram.com/clau.sage/">Follow @clau.sage</a> to hear first.</p>
 <div class="buttons">
-<a class="button button-dark" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
-<a class="button button-light" href="#download" aria-label="Get it for iPhone"><span class="icon-phone" aria-hidden="true"></span>iPhone</a>
+<a class="button button-dark on-mac" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Mac</a>
+<a class="button button-dark on-phone send-to-mac" href="mailto:?subject=Clausage%20for%20Mac&amp;body=https%3A%2F%2Fclausage.ai%2F" aria-label="Send the Clausage link to your Mac"><span class="icon-laptop" aria-hidden="true"></span>Send it to my Mac</a>
+<a class="button button-light" href="https://www.instagram.com/clau.sage/" aria-label="iPhone app coming soon: follow @clau.sage on Instagram to hear first"><span class="icon-phone" aria-hidden="true"></span>iPhone <span class="soon">soon</span></a>
 </div>
 <p class="fine">Needs a Claude Pro or Max plan. On Free, claude.ai doesn’t share usage, so there’s nothing to tally.</p>
 <footer class="footer">
@@ -213,5 +218,21 @@
 </footer>
 </section>
 </main>
+<script>
+// Phones get "Send it to my Mac": the share sheet (AirDrop, Messages, Mail), or the mailto fallback.
+// The shared link keeps the channel ref (?ref=ig becomes ?ref=ig-send) so server logs can count handoffs.
+(function () {
+  var ref = new URLSearchParams(location.search).get('ref');
+  var url = 'https://clausage.ai/?ref=' + encodeURIComponent((ref ? ref + '-' : '') + 'send');
+  document.querySelectorAll('.send-to-mac').forEach(function (a) {
+    a.href = 'mailto:?subject=' + encodeURIComponent('Clausage for Mac') + '&body=' + encodeURIComponent(url);
+    if (!navigator.share) return;
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      navigator.share({ title: 'Clausage for Mac', text: 'Your Claude limits in the Mac menu bar', url: url }).catch(function () {});
+    });
+  });
+})();
+</script>
 </body>
 </html>

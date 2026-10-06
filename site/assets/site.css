@@ -242,6 +242,16 @@ p { margin: 0; }
 .footer .fine { max-width: 520px; line-height: 1.5; text-wrap: pretty; }
 .footer nav { display: flex; gap: 20px; font: 500 13px/1 var(--sans); }
 
+/* Phones and tablets can't run the Mac app: swap the zip download for "Send it to my Mac". */
+
+.soon { padding: 3px 7px; border-radius: 999px; background: rgba(38,35,31,.08); font: 600 11px/1 var(--sans); color: var(--muted); }
+.on-phone { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .on-mac { display: none; }
+  .on-phone { display: flex; }
+  p.on-phone { display: block; }
+}
+
 /* Narrow screens: keep the nav on one line and the popover inside the desktop card. */
 
 @media (max-width: 600px) {
