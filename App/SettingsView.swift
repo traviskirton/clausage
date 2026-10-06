@@ -57,15 +57,17 @@ enum SettingsColor {
     }
 }
 
-/// Sidebar card geometry, shared with `SettingsWindow`, which puts the traffic lights in the card's first row.
+/// Sidebar card geometry. The card is concentric with the window's corners; the traffic lights (placed by macOS for the
+/// unified toolbar, 19pt from the corner) sit in its first slot.
 enum SettingsSidebar {
+    static let windowRadius: CGFloat = 26     // macOS 26, window with a unified toolbar
     static let cardInset: CGFloat = 8         // card from the window edge
-    static let cardPadding: CGFloat = 10      // rows from the card edge, top and bottom alike
+    static var cardRadius: CGFloat { windowRadius - cardInset }
+    static let cardPadding: CGFloat = 10      // rows from the card edge
     static let rowPadding: CGFloat = 8        // tile from the row edge
     static let rowHeight: CGFloat = 36
-    /// Window coordinates (from the top-left) of the traffic-lights row and of the row tiles' leading edge.
-    static var buttonsRowTop: CGFloat { cardInset + cardPadding }
-    static var tileLeading: CGFloat { cardInset + cardPadding + rowPadding }
+    /// Slot for the traffic lights (window y 19–33): General's row starts 14pt below them.
+    static let buttonsSlot: CGFloat = 26
 }
 
 /// The Settings window: an inset sidebar card (About pinned to the bottom) and content panes of section labels above
@@ -121,7 +123,7 @@ struct SettingsView: View {
     private var sidebar: some View {
         let m = SettingsSidebar.self
         return VStack(alignment: .leading, spacing: 3) {
-            Color.clear.frame(height: m.rowHeight)       // the window's traffic lights, placed here by SettingsWindow
+            Color.clear.frame(height: m.buttonsSlot)     // the window's traffic lights
             ForEach(SettingsTab.allCases.filter { $0 != .about }) { item($0) }
             Spacer()
             item(.about)
@@ -130,10 +132,10 @@ struct SettingsView: View {
         .frame(width: 190)
         .frame(maxHeight: .infinity)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: m.cardRadius, style: .continuous)
                 .fill(SettingsColor.card)
                 .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .overlay(RoundedRectangle(cornerRadius: m.cardRadius, style: .continuous)
                     .strokeBorder(SettingsColor.hairline, lineWidth: 0.5))
         }
         .padding(m.cardInset)

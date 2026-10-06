@@ -10,16 +10,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             let host = NSHostingView(rootView: SettingsView(model: .shared))
             // Don't let SwiftUI size the window: it adds the title bar's safe area (32pt) to the 600pt view.
             host.sizingOptions = []
-            // Full-size content view + transparent title bar: the split view's sidebar runs to the top of the window with
-            // the traffic lights inside it, and the page title (.navigationTitle) renders in the toolbar area.
+            // Full-size content view + transparent title bar: the sidebar card runs to the top of the window with the
+            // traffic lights inside it, and each pane draws its own title.
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 600),
                              styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                              backing: .buffered, defer: false)
             w.contentView = host
-            // Transparent title bar, no toolbar: the traffic lights sit inside the sidebar card and each pane draws its own title.
             w.titlebarAppearsTransparent = true
             w.titlebarSeparatorStyle = .none
             w.titleVisibility = .hidden
+            // An empty unified toolbar gives the window macOS's larger corner radius (26pt) and puts the traffic lights
+            // 19pt in from the corner. It draws nothing, and the content under it still gets clicks.
+            w.toolbar = NSToolbar(identifier: "ClausageSettings")
+            w.toolbarStyle = .unified
             w.title = "Clausage Settings"
             w.isMovableByWindowBackground = true
             w.backgroundColor = NSColor(named: "Cream")
@@ -45,32 +48,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        placeWindowButtons()
     }
-
-    /// The traffic lights are the sidebar card's first row: centered in a row-height slot inset like the About row at
-    /// the bottom, left-aligned with the row tiles. The title bar container is resized to end where that slot ends, so
-    /// it never covers the General row. AppKit lays the buttons out again on some window events, hence the re-runs.
-    private func placeWindowButtons() {
-        guard let w = window else { return }
-        let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { w.standardWindowButton($0) }
-        guard buttons.count == 3, let container = buttons[0].superview?.superview else { return }
-        let spacing = buttons[1].frame.minX - buttons[0].frame.minX
-        let m = SettingsSidebar.self
-        var f = container.frame
-        f.size.height = m.buttonsRowTop + m.rowHeight
-        f.origin.y = w.frame.height - f.height
-        container.frame = f
-        for (i, b) in buttons.enumerated() {
-            let top = m.buttonsRowTop + (m.rowHeight - b.frame.height) / 2
-            b.setFrameOrigin(NSPoint(x: m.tileLeading + CGFloat(i) * spacing, y: f.height - top - b.frame.height))
-        }
-    }
-
-    func windowDidResize(_ notification: Notification) { placeWindowButtons() }
-    func windowDidBecomeKey(_ notification: Notification) { placeWindowButtons() }
-    func windowDidResignKey(_ notification: Notification) { placeWindowButtons() }
-    func windowDidChangeEffectiveAppearance(_ notification: Notification) { placeWindowButtons() }
 
     func windowWillClose(_ notification: Notification) {
         window = nil
