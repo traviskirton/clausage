@@ -18,7 +18,7 @@ settings:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: G3GED29J33
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "0.0.4"
+    MARKETING_VERSION: "0.0.5"
     CURRENT_PROJECT_VERSION: "4"
     ENABLE_HARDENED_RUNTIME: YES
     # Xcode's "recommended settings" (adopted here because the .xcodeproj is generated)
