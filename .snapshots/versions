@@ -21,3 +21,9 @@ Mac menubar app (popover, settings, accounts, notifications, Claude Code tab, Sp
 **Clausage brand and new usage sections (iOS + macOS)**
 
 Bricolage type and Paper/Ink/Sand palette across both apps; plan badge, Limiting now chip, weekly product split, running-total chart (each app records its own history), usage credits (iPhone), Claude Code contributors pane (Mac), branded widgets, popover, menu bar and Settings. Limitations: App Icon alternates and the privacy-policy link aren't built; some Mac control tints and the iPhone pull-to-refresh were only verified offscreen/in the simulator.
+
+## v4-pre-rename
+
+**Last version with the claude-usage identifiers**
+
+Clausage-branded Mac and iOS apps still built as `Claude Usage.app` with bundle IDs `com.postfl.claude-usage*`, App Group `group.com.postfl.claude-usage`, the `ClaudeUsage` Xcode project and the Sparkle feed at updates.postfl.com/claude-usage. About links point to clausage.ai; `site/` has plain placeholder pages. Limitations: the clausage.ai pages are not uploaded yet.
