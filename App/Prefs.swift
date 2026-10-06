@@ -17,6 +17,10 @@ enum Prefs {
             "hotkeyEnabled": true,
             "notifyOutage": false,
         ])
+        // Ring was dropped from the menu bar options; its closest replacement is Bars.
+        if UserDefaults.standard.string(forKey: "menuDisplay") == "ring" {
+            UserDefaults.standard.set("bars", forKey: "menuDisplay")
+        }
     }
 
     static func parse(_ s: String) -> [Int] {

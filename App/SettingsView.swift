@@ -18,8 +18,47 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// The Settings window: Cream background, an inset Cream 2 sidebar card (About pinned to the bottom), and content
-/// panes of section labels above Cream 2 group boxes. Controls stay native, recolored in Ink.
+/// Settings colors. Every selected or on state is Ember in both appearances; nothing in Settings uses the system
+/// accent. Unselected controls sit on a faint fill of the text color. Dark mode has its own warmer surfaces.
+enum SettingsColor {
+    static let window = dynamic(0xF7EEDD, dark: 0x24211E)
+    static let card = dynamic(0xF2E7D3, dark: 0x2D2925)
+    static let hairline = dynamic(0x26231F, 0.10, dark: 0xF4EDE2, 0.09)
+    static let text = dynamic(0x26231F, dark: 0xF4EDE2)
+    static let secondary = dynamic(0x766E64, dark: 0xADA497)
+    static let ember = rgb(0xC23B14)
+    static let onEmber = Color.white
+    /// Unselected segment, chip, picker, shortcut field and button.
+    static let control = dynamic(0x26231F, 0.07, dark: 0xF4EDE2, 0.08)
+    static let selectedRow = dynamic(0xC23B14, 0.12, dark: 0xE26034, 0.20)
+    static let tile = dynamic(0x8A8278, dark: 0x6E665C)
+    static let tileGlyph = dynamic(0xFFFCF6, dark: 0xF4EDE2)
+    static let switchOff = dynamic(0x26231F, 0.18, dark: 0xF4EDE2, 0.16)
+    static let knobOff = dynamic(0xFFFFFF, dark: 0xCFC6B8)
+    static let link = dynamic(0xC23B14, dark: 0xFF8A5C)
+
+    static var textNS: NSColor { ns(0x26231F, 1, dark: 0xF4EDE2, 1) }
+
+    private static func rgb(_ hex: Int, _ alpha: Double = 1) -> Color {
+        Color(.sRGB, red: Double(hex >> 16 & 0xFF) / 255, green: Double(hex >> 8 & 0xFF) / 255,
+              blue: Double(hex & 0xFF) / 255, opacity: alpha)
+    }
+
+    private static func ns(_ light: Int, _ la: CGFloat, dark: Int, _ da: CGFloat) -> NSColor {
+        func c(_ hex: Int, _ a: CGFloat) -> NSColor {
+            NSColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255,
+                    blue: CGFloat(hex & 0xFF) / 255, alpha: a)
+        }
+        return NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? c(dark, da) : c(light, la) }
+    }
+
+    private static func dynamic(_ light: Int, _ la: CGFloat = 1, dark: Int, _ da: CGFloat = 1) -> Color {
+        Color(nsColor: ns(light, la, dark: dark, da))
+    }
+}
+
+/// The Settings window: an inset sidebar card (About pinned to the bottom) and content panes of section labels above
+/// group boxes. Selected states are Ember; controls are drawn here rather than native so no system blue shows through.
 struct SettingsView: View {
     @ObservedObject var model: UsageModel
     @State private var tab: SettingsTab
@@ -32,20 +71,26 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(tab.rawValue).font(.system(size: 17, weight: .bold)).foregroundStyle(Color("Ink"))
-                        .frame(height: 22).padding(.top, 12).padding(.bottom, 16)
-                        .accessibilityAddTraits(.isHeader)
-                    pane
+            if tab == .about {
+                AboutTab().padding(.leading, 12).padding(.trailing, 20).padding(.vertical, 20)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(tab.rawValue).font(.system(size: 17, weight: .bold)).foregroundStyle(SettingsColor.text)
+                            .frame(height: 22).padding(.top, 12).padding(.bottom, 16)
+                            .accessibilityAddTraits(.isHeader)
+                        pane
+                    }
+                    .padding(.leading, 12).padding(.trailing, 20).padding(.bottom, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.leading, 12).padding(.trailing, 20).padding(.bottom, 20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .scrollIndicators(.automatic)
             }
-            .scrollIndicators(.automatic)
         }
-        .background(Color("Cream"))
-        .tint(Color("Ink"))
+        .foregroundStyle(SettingsColor.text)
+        .background(SettingsColor.window)
+        .tint(SettingsColor.ember)
+        .buttonStyle(SoftButtonStyle())
         .frame(width: 760, height: 600)
     }
 
@@ -56,13 +101,13 @@ struct SettingsView: View {
         case .notifications: NotificationsTab()
         case .claudeCode: ClaudeCodeTab()
         case .updates: UpdatesTab()
-        case .about: AboutTab()
+        case .about: EmptyView()
         }
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Color.clear.frame(height: 40)        // the traffic lights sit here, inside the card
+        VStack(alignment: .leading, spacing: 3) {
+            Color.clear.frame(height: 17)        // the traffic lights (bottom at 23pt) sit here; General starts 12pt below
             ForEach(SettingsTab.allCases.filter { $0 != .about }) { item($0) }
             Spacer()
             item(.about)
@@ -72,10 +117,10 @@ struct SettingsView: View {
         .frame(maxHeight: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color("Cream2"))
-                .shadow(color: Color(red: 38 / 255, green: 35 / 255, blue: 31 / 255).opacity(0.06), radius: 3, y: 1)
+                .fill(SettingsColor.card)
+                .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color(red: 38 / 255, green: 35 / 255, blue: 31 / 255).opacity(0.08), lineWidth: 0.5))
+                    .strokeBorder(SettingsColor.hairline, lineWidth: 0.5))
         }
         .padding(8)
     }
@@ -83,20 +128,18 @@ struct SettingsView: View {
     private func item(_ t: SettingsTab) -> some View {
         let selected = tab == t
         return Button { tab = t } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: t.symbol)
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color("Paper"))
+                    .foregroundStyle(selected ? SettingsColor.onEmber : SettingsColor.tileGlyph)
                     .frame(width: 22, height: 22)
-                    .background(selected ? Color("Ink") : Color("Ink3"), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                Text(t.rawValue).font(.system(size: 13)).foregroundStyle(Color("Ink"))
+                    .background(selected ? SettingsColor.ember : SettingsColor.tile, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Text(t.rawValue).font(.system(size: 13, weight: selected ? .medium : .regular)).foregroundStyle(SettingsColor.text)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 6)
-            .frame(height: 34)
-            .background(selected ? Color(red: 0.910, green: 0.875, blue: 0.812) : .clear,
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.horizontal, 8).padding(.vertical, 7)
+            .background(selected ? SettingsColor.selectedRow : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -106,7 +149,7 @@ struct SettingsView: View {
 
 // MARK: Building blocks
 
-/// A section: 13pt semibold Ink label above a Cream 2 box (radius 12) whose rows are split by hairlines.
+/// A section: 13pt semibold label above a card-colored box (radius 12) whose rows are split by hairlines.
 struct SettingsSection<Content: View>: View {
     let title: String?
     var footer: String? = nil
@@ -121,14 +164,14 @@ struct SettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color("Ink"))
+                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
                     .accessibilityAddTraits(.isHeader)
             }
             VStack(spacing: 0) { content }
                 .padding(.horizontal, 10)
-                .background(Color("Cream2"), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(SettingsColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             if let footer {
-                Text(footer).font(.system(size: 11)).foregroundStyle(Color("Ink2"))
+                Text(footer).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
             }
         }
@@ -138,7 +181,7 @@ struct SettingsSection<Content: View>: View {
 
 /// Hairline between rows inside a section box.
 struct RowDivider: View {
-    var body: some View { Rectangle().fill(Color("Ink").opacity(0.1)).frame(height: 0.5) }
+    var body: some View { Rectangle().fill(SettingsColor.hairline).frame(height: 0.5) }
 }
 
 /// One row: title (and optional detail) on the left, a control on the right.
@@ -156,9 +199,9 @@ struct SettingsRow<Control: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13)).foregroundStyle(Color("Ink"))
+                Text(title).font(.system(size: 13)).foregroundStyle(SettingsColor.text)
                 if let detail {
-                    Text(detail).font(.system(size: 11)).foregroundStyle(Color("Ink2")).fixedSize(horizontal: false, vertical: true)
+                    Text(detail).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 8)
@@ -169,57 +212,65 @@ struct SettingsRow<Control: View>: View {
     }
 }
 
-/// A switch in Ink.
-struct InkSwitch: View {
+/// Switch: Ember track and white knob when on; a faint track (darker in light mode, so it reads on the card) when off.
+struct BrandSwitch: View {
     let label: String
     @Binding var isOn: Bool
+    @Environment(\.isEnabled) private var enabled
+
     var body: some View {
-        Toggle(label, isOn: $isOn).toggleStyle(.switch).labelsHidden().tint(Color("Ink")).controlSize(.small)
+        Button { withAnimation(.easeOut(duration: 0.15)) { isOn.toggle() } } label: {
+            ZStack(alignment: isOn ? .trailing : .leading) {
+                Capsule().fill(isOn ? SettingsColor.ember : SettingsColor.switchOff)
+                Capsule().fill(isOn ? SettingsColor.onEmber : SettingsColor.knobOff)
+                    .frame(width: 24, height: 18)
+                    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                    .padding(2)
+            }
+            .frame(width: 38, height: 22)
+            .opacity(enabled ? 1 : 0.45)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityRepresentation { Toggle(label, isOn: $isOn) }
     }
 }
 
-/// Native segmented control, recolored: the selected segment is Ink.
-struct InkSegmented<T: Hashable>: NSViewRepresentable {
+/// Segmented control: a faint track; the selected segment is Ember with white text.
+struct BrandSegmented<T: Hashable>: View {
     @Binding var selection: T
     let options: [(T, String)]
 
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let c = NSSegmentedControl(labels: options.map(\.1), trackingMode: .selectOne,
-                                   target: context.coordinator, action: #selector(Coordinator.changed(_:)))
-        c.segmentStyle = .rounded
-        c.selectedSegmentBezelColor = NSColor(named: "Ink")
-        c.controlSize = .small
-        c.font = .systemFont(ofSize: 12)
-        return c
-    }
-
-    func updateNSView(_ c: NSSegmentedControl, context: Context) {
-        context.coordinator.parent = self
-        for (i, o) in options.enumerated() where c.label(forSegment: i) != o.1 { c.setLabel(o.1, forSegment: i) }
-        c.selectedSegment = options.firstIndex { $0.0 == selection } ?? -1
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    final class Coordinator: NSObject {
-        var parent: InkSegmented
-        init(_ p: InkSegmented) { parent = p }
-        @MainActor @objc func changed(_ c: NSSegmentedControl) {
-            guard c.selectedSegment >= 0, c.selectedSegment < parent.options.count else { return }
-            parent.selection = parent.options[c.selectedSegment].0
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
+                let on = o.0 == selection
+                Button { withAnimation(.easeInOut(duration: 0.2)) { selection = o.0 } } label: {
+                    Text(o.1).font(.system(size: 12, weight: .medium)).monospacedDigit()
+                        .foregroundStyle(on ? SettingsColor.onEmber : SettingsColor.text)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(on ? SettingsColor.ember : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? [.isSelected] : [])
+            }
         }
+        .padding(2)
+        .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .fixedSize()
     }
 }
 
-/// Capsule toggle: Ink with Paper text when on, Sand 2 with Ink text when off.
+/// Capsule toggle: Ember with white text when on, the faint control fill when off.
 struct ChipToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(action: { configuration.isOn.toggle() }) {
             configuration.label
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .background(configuration.isOn ? Color("Ink") : Color(red: 0.910, green: 0.875, blue: 0.812), in: Capsule())
-                .foregroundStyle(configuration.isOn ? Color("Paper") : Color("Ink"))
+                .font(.system(size: 12, weight: .semibold))
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(configuration.isOn ? SettingsColor.ember : SettingsColor.control, in: Capsule())
+                .foregroundStyle(configuration.isOn ? SettingsColor.onEmber : SettingsColor.text)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -227,14 +278,85 @@ struct ChipToggleStyle: ToggleStyle {
     }
 }
 
-/// Row label with a secondary description underneath.
-struct DescribedLabel: View {
-    let title: String
-    let detail: String
+/// Push buttons in Settings: the faint control fill with text-colored labels.
+struct SoftButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { SoftButton(configuration: configuration) }
+
+    private struct SoftButton: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var enabled
+        var body: some View {
+            configuration.label
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(SettingsColor.text)
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(SettingsColor.text.opacity(configuration.isPressed ? 0.08 : 0)))
+                .opacity(enabled ? 1 : 0.45)
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        }
+    }
+}
+
+/// Pop-up menu drawn like an unselected control: value and an up/down chevron on the faint fill.
+struct BrandMenuPicker<T: Hashable>: View {
+    @Binding var selection: T
+    let options: [(T, String)]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).foregroundStyle(Color("Ink"))
-            Text(detail).font(.caption).foregroundStyle(Color("Ink2"))
+        Menu {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
+                Toggle(o.1, isOn: Binding(get: { selection == o.0 }, set: { if $0 { selection = o.0 } }))
+            }
+        } label: {
+            HStack(spacing: 14) {
+                Text(options.first { $0.0 == selection }?.1 ?? "").font(.system(size: 12))
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(SettingsColor.text)
+            .padding(.leading, 10).padding(.trailing, 8).padding(.vertical, 5)
+            .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+}
+
+/// The global-shortcut recorder without its native bezel (whose focus ring and highlight are system blue), on the
+/// faint control fill.
+struct ShortcutField: View {
+    let name: KeyboardShortcuts.Name
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        Field(name: name)
+            .frame(width: 108, height: 18)
+            .padding(.vertical, 2).padding(.leading, 8).padding(.trailing, 6)
+            .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .opacity(enabled ? 1 : 0.45)
+    }
+
+    private struct Field: NSViewRepresentable {
+        let name: KeyboardShortcuts.Name
+
+        func makeNSView(context: Context) -> KeyboardShortcuts.RecorderCocoa {
+            let r = KeyboardShortcuts.RecorderCocoa(for: name)
+            r.isBezeled = false
+            r.isBordered = false
+            r.drawsBackground = false
+            r.backgroundColor = .clear
+            r.focusRingType = .none
+            r.font = .systemFont(ofSize: 12, weight: .medium)
+            r.textColor = SettingsColor.textNS
+            return r
+        }
+
+        func updateNSView(_ r: KeyboardShortcuts.RecorderCocoa, context: Context) {
+            r.shortcutName = name
         }
     }
 }
@@ -246,12 +368,6 @@ struct GeneralTab: View {
     @AppStorage("menuDisplay") private var display = "off"
     @AppStorage("tintIcon") private var tint = true
     @AppStorage("fillBase") private var fillBase = "auto"
-    @AppStorage("thresholds") private var thresholds = "75,80,90"
-    @AppStorage("customThresholds") private var custom = ""
-    @AppStorage("notifySoon") private var soon = true
-    @AppStorage("soonMinutes") private var soonMinutes = 10
-    @AppStorage("notifyReset") private var notifyReset = true
-    @AppStorage("notifyOutage") private var notifyOutage = false
     @AppStorage("refreshMinutes") private var refresh = 5
     @AppStorage("hotkeyEnabled") private var hotkey = true
 
@@ -264,78 +380,48 @@ struct GeneralTab: View {
         VStack(alignment: .leading, spacing: 0) {
             SettingsSection("Startup") {
                 SettingsRow("Launch at login") {
-                    InkSwitch(label: "Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+                    BrandSwitch(label: "Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
                 }
             }
 
             SettingsSection("Menu bar") {
                 SettingsRow("Show usage next to icon") {
-                    InkSegmented(selection: $display, options: [("off", "Off"), ("percent", sessionLabel), ("ring", "Ring"), ("bars", "Bars"), ("fill", "Fill")])
-                        .fixedSize()
+                    BrandSegmented(selection: $display, options: [("off", "Off"), ("percent", sessionLabel), ("bars", "Bars"), ("fill", "Fill")])
                 }
-                RowDivider()
-                SettingsRow("Fill logo base", detail: "White rays on a dark menu bar, dark rays on a light one. Auto follows the menu bar.") {
-                    InkSegmented(selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")]).fixedSize()
-                }
-                RowDivider()
-                SettingsRow("Tint percent by pressure", detail: "Orange at 85%, red at 95% · uses highest limit") {
-                    InkSwitch(label: "Tint percent by pressure", isOn: $tint)
-                }
-            }
-
-            SettingsSection("Notify me when") {
-                SettingsRow("Any limit reaches") {
-                    HStack(spacing: 6) {
-                        ForEach(Prefs.allThresholdChips, id: \.self) { t in
-                            Toggle("\(t)%", isOn: chip(t)).toggleStyle(ChipToggleStyle())
+                // Each option's own setting shows only while that option is chosen.
+                if display == "fill" {
+                    VStack(spacing: 0) {
+                        RowDivider()
+                        SettingsRow("Fill logo base", detail: "White rays on a dark menu bar, dark rays on a light one. Auto follows the menu bar.") {
+                            BrandSegmented(selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")])
                         }
                     }
+                    .transition(.opacity)
                 }
-                RowDivider()
-                SettingsRow("Session is about to reset") {
-                    HStack {
-                        Picker("Minutes before reset", selection: $soonMinutes) {
-                            ForEach([5, 10, 15, 30], id: \.self) { Text("\($0) min before").tag($0) }
-                        }.pickerStyle(.menu).labelsHidden().fixedSize().disabled(!soon)
-                        InkSwitch(label: "Session is about to reset", isOn: $soon)
-                    }
-                }
-                RowDivider()
-                SettingsRow("A limit resets") { InkSwitch(label: "A limit resets", isOn: $notifyReset) }
-                RowDivider()
-                SettingsRow("Anthropic reports an outage") {
-                    InkSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)
-                        .onChange(of: notifyOutage) { _, on in
-                            if on { Task { await Notifier.requestAuthorization(); await StatusMonitor.check() } }
+                if display == "percent" {
+                    VStack(spacing: 0) {
+                        RowDivider()
+                        SettingsRow("Tint percent by pressure", detail: "Orange at 85%, red at 95% · uses highest limit") {
+                            BrandSwitch(label: "Tint percent by pressure", isOn: $tint)
                         }
+                    }
+                    .transition(.opacity)
                 }
             }
 
             SettingsSection("Refresh & shortcuts") {
-                SettingsRow("Refresh every") {
-                    InkSegmented(selection: $refresh, options: [(1, "1m"), (5, "5m"), (15, "15m"), (30, "30m")]).fixedSize()
+                SettingsRow("Refresh every", detail: "Press ⌘R in the popover to refresh now.") {
+                    BrandSegmented(selection: $refresh, options: [(1, "1m"), (5, "5m"), (15, "15m"), (30, "30m")])
                 }
                 RowDivider()
                 SettingsRow("Open popover from anywhere") {
-                    HStack {
-                        KeyboardShortcuts.Recorder(for: .openPopover)
-                        InkSwitch(label: "Open popover from anywhere", isOn: $hotkey)
+                    HStack(spacing: 8) {
+                        ShortcutField(name: .openPopover)
+                        BrandSwitch(label: "Open popover from anywhere", isOn: $hotkey)
                     }
                 }
-                RowDivider()
-                SettingsRow("Refresh now (popover open)") { Text("⌘R").foregroundStyle(Color("Ink2")) }
             }
         }
-    }
-
-    private func chip(_ t: Int) -> Binding<Bool> {
-        Binding(
-            get: { Prefs.parse(thresholds).contains(t) },
-            set: { on in
-                var set = Set(Prefs.parse(thresholds))
-                if on { set.insert(t) } else { set.remove(t) }
-                thresholds = set.sorted().map(String.init).joined(separator: ",")
-            })
     }
 }
 
@@ -393,9 +479,9 @@ struct ClaudeCodeTab: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 Text("\(week ? "Last 7 days" : "Last 24 hours") of Claude Code on this Mac. Shares overlap, so they don’t add up to 100%.")
-                    .font(.system(size: 11)).foregroundStyle(Color("Ink2")).fixedSize(horizontal: false, vertical: true)
+                    .font(.system(size: 11)).foregroundStyle(SettingsColor.secondary).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                InkSegmented(selection: $week, options: [(false, "Day"), (true, "Week")]).fixedSize()
+                BrandSegmented(selection: $week, options: [(false, "Day"), (true, "Week")])
             }
             .padding(.bottom, 16)
 
@@ -409,8 +495,8 @@ struct ClaudeCodeTab: View {
                     if let r = result { hits(r) }
                 } else {
                     HStack(spacing: 8) {
-                        TallyLoader(size: 16)
-                        Text("Reading this Mac’s Claude Code sessions…").font(.system(size: 12)).foregroundStyle(Color("Ink2"))
+                        TallyLoader(size: 16, ink: SettingsColor.text)
+                        Text("Reading this Mac’s Claude Code sessions…").font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
                     }
                     .padding(.bottom, 20)
                 }
@@ -419,7 +505,7 @@ struct ClaudeCodeTab: View {
             SettingsSection(nil) {
                 SettingsRow("Scan Claude Code sessions",
                             detail: "Reads ~/.claude on this Mac. Only totals are kept, never prompts or code, and nothing leaves this Mac.") {
-                    InkSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
+                    BrandSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
                 }
             }
         }
@@ -436,11 +522,11 @@ struct ClaudeCodeTab: View {
             ForEach(Array(shown.enumerated()), id: \.offset) { i, b in
                 if i > 0 { RowDivider() }
                 HStack(alignment: .top, spacing: 12) {
-                    Text("\(b.1)%").font(.clausagePercent(20)).foregroundStyle(Color("Ink"))
+                    Text("\(b.1)%").font(.clausagePercent(20)).foregroundStyle(SettingsColor.text)
                         .frame(width: 52, alignment: .leading)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(Self.copy(b.0).title).font(.system(size: 13, weight: .medium)).foregroundStyle(Color("Ink"))
-                        Text(Self.copy(b.0).tip).font(.system(size: 11)).foregroundStyle(Color("Ink2"))
+                        Text(Self.copy(b.0).title).font(.system(size: 13, weight: .medium)).foregroundStyle(SettingsColor.text)
+                        Text(Self.copy(b.0).tip).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
@@ -459,9 +545,9 @@ struct ClaudeCodeTab: View {
             ForEach(Array(items.prefix(8).enumerated()), id: \.element.id) { i, s in
                 if i > 0 { RowDivider() }
                 HStack {
-                    Text(prefix + s.name).font(.system(size: 12, design: .monospaced)).foregroundStyle(Color("Ink")).lineLimit(1)
+                    Text(prefix + s.name).font(.system(size: 12, design: .monospaced)).foregroundStyle(SettingsColor.text).lineLimit(1)
                     Spacer(minLength: 8)
-                    Text("\(s.percent)%").font(.system(size: 12)).foregroundStyle(Color("Ink2"))
+                    Text("\(s.percent)%").font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
                 }
                 .frame(minHeight: 38)
             }
@@ -475,7 +561,7 @@ struct ClaudeCodeTab: View {
             ForEach(Array(order.enumerated()), id: \.element) { i, k in
                 if i > 0 { RowDivider() }
                 SettingsRow(Self.limitName(k)) {
-                    Text("\(r.limitHits[k] ?? 0)").font(.system(size: 13, weight: .semibold).monospacedDigit()).foregroundStyle(Color("Ink"))
+                    Text("\(r.limitHits[k] ?? 0)").font(.system(size: 13, weight: .semibold).monospacedDigit()).foregroundStyle(SettingsColor.text)
                 }
             }
         }
@@ -521,8 +607,14 @@ struct ClaudeCodeTab: View {
 
 // MARK: Notifications
 
+/// Which alerts you get and the macOS permission, all in one place.
 struct NotificationsTab: View {
     @State private var status: UNAuthorizationStatus = .notDetermined
+    @AppStorage("thresholds") private var thresholds = "75,80,90"
+    @AppStorage("notifySoon") private var soon = true
+    @AppStorage("soonMinutes") private var soonMinutes = 10
+    @AppStorage("notifyReset") private var notifyReset = true
+    @AppStorage("notifyOutage") private var notifyOutage = false
 
     private var statusText: String {
         switch status {
@@ -533,19 +625,48 @@ struct NotificationsTab: View {
     }
 
     var body: some View {
-        SettingsSection("Permission",
-                        footer: "macOS only lets an app ask for permission once. After that, turn notifications on or off in System Settings. Choose which alerts you get under General → Notify me when.") {
-            SettingsRow("Notifications", detail: statusText) {
-                HStack {
-                    if status == .notDetermined {
-                        Button("Allow…") { Task { await Notifier.requestAuthorization(); await load() } }
+        VStack(alignment: .leading, spacing: 0) {
+            SettingsSection("Notify me when") {
+                SettingsRow("Any limit reaches") {
+                    HStack(spacing: 5) {
+                        ForEach(Prefs.allThresholdChips, id: \.self) { t in
+                            Toggle("\(t)%", isOn: chip(t)).toggleStyle(ChipToggleStyle())
+                        }
                     }
-                    Button("Open System Settings…") { openSystemSettings() }
+                }
+                RowDivider()
+                SettingsRow("Session is about to reset") {
+                    HStack(spacing: 8) {
+                        BrandMenuPicker(selection: $soonMinutes, options: [5, 10, 15, 30].map { ($0, "\($0) min before") })
+                            .disabled(!soon)
+                        BrandSwitch(label: "Session is about to reset", isOn: $soon)
+                    }
+                }
+                RowDivider()
+                SettingsRow("A limit resets") { BrandSwitch(label: "A limit resets", isOn: $notifyReset) }
+                RowDivider()
+                SettingsRow("Anthropic reports an outage") {
+                    BrandSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)
+                        .onChange(of: notifyOutage) { _, on in
+                            if on { Task { await Notifier.requestAuthorization(); await StatusMonitor.check() } }
+                        }
                 }
             }
-            RowDivider()
-            SettingsRow("Send a test notification") {
-                Button("Send test") { Notifier.sendTest() }.disabled(status == .denied)
+
+            SettingsSection("Permission",
+                            footer: "macOS only lets an app ask for permission once. After that, turn notifications on or off in System Settings.") {
+                SettingsRow("Notifications", detail: statusText) {
+                    HStack {
+                        if status == .notDetermined {
+                            Button("Allow…") { Task { await Notifier.requestAuthorization(); await load() } }
+                        }
+                        Button("Open System Settings…") { openSystemSettings() }
+                    }
+                }
+                RowDivider()
+                SettingsRow("Send a test notification") {
+                    Button("Send test") { Notifier.sendTest() }.disabled(status == .denied)
+                }
             }
         }
         .task { await load() }
@@ -553,6 +674,16 @@ struct NotificationsTab: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await load() }
         }
+    }
+
+    private func chip(_ t: Int) -> Binding<Bool> {
+        Binding(
+            get: { Prefs.parse(thresholds).contains(t) },
+            set: { on in
+                var set = Set(Prefs.parse(thresholds))
+                if on { set.insert(t) } else { set.remove(t) }
+                thresholds = set.sorted().map(String.init).joined(separator: ",")
+            })
     }
 
     /// Opens this app's page in Notifications settings (falls back to the Notifications pane).
@@ -571,40 +702,150 @@ struct NotificationsTab: View {
 
 // MARK: Updates / About
 
+enum AppVersion {
+    static var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?" }
+    static var build: String { Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?" }
+}
+
 struct UpdatesTab: View {
     @ObservedObject private var updater = Updater.shared
-    private var version: String {
-        let i = Bundle.main.infoDictionary
-        return "\(i?["CFBundleShortVersionString"] as? String ?? "?") (\(i?["CFBundleVersion"] as? String ?? "?"))"
-    }
     var body: some View {
         SettingsSection("Version") {
-            SettingsRow("Clausage \(version)") {
+            SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))") {
                 Button("Check for Updates…") { updater.checkForUpdates() }.disabled(!updater.canCheck)
             }
             RowDivider()
             SettingsRow("Check automatically", detail: "Looks for new versions in the background.") {
-                InkSwitch(label: "Check automatically", isOn: Binding(get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }))
+                BrandSwitch(label: "Check automatically", isOn: Binding(get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }))
             }
         }
     }
 }
 
+/// Identity in the middle, then what people come here for: is it up to date, and how to report something.
+/// Quitting is ⌘Q and the gear menu.
 struct AboutTab: View {
+    @ObservedObject private var updater = Updater.shared
+    @Environment(\.colorScheme) private var scheme
+
+    enum Links {
+        static let website = URL(string: "https://postfl.com/clausage")!
+        static let privacy = URL(string: "https://postfl.com/clausage/privacy")!
+        static let acknowledgements = URL(string: "https://postfl.com/clausage/acknowledgements")!
+        static let feedbackAddress = "travis@postfl.com"
+    }
+
     var body: some View {
-        SettingsSection(nil) {
-            HStack(spacing: 16) {
-                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
-                VStack(alignment: .leading, spacing: 4) {
-                    Wordmark(size: 26)
-                    Text("Your Claude plan limits in the menu bar.").foregroundStyle(Color("Ink2"))
-                    Text("An independent app, not made by or affiliated with Anthropic.").font(.caption).foregroundStyle(Color("Ink2"))
+        VStack(spacing: 16) {
+            VStack(spacing: 14) {
+                icon
+                VStack(spacing: 6) {
+                    Text("clausage")
+                        .font(.clausageDisplay(34)).brandTracking(-0.045, size: 34)
+                        .foregroundStyle(SettingsColor.text)
+                        .accessibilityLabel("Clausage")
+                    Text("Your Claude plan limits, at a glance.")
+                        .font(.system(size: 13)).foregroundStyle(SettingsColor.secondary)
+                    Text("Version \(AppVersion.short) (\(AppVersion.build))")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced)).monospacedDigit()
+                        .foregroundStyle(SettingsColor.secondary)
+                        .textSelection(.enabled)
                 }
-                Spacer()
             }
-            .padding(.vertical, 12)
-            RowDivider()
-            SettingsRow("Quit Clausage") { Button("Quit") { NSApplication.shared.terminate(nil) } }
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            SettingsSection(nil) {
+                SettingsRow(updateTitle, detail: updateDetail) { updateControl }
+                RowDivider()
+                Button(action: sendFeedback) {
+                    SettingsRow("Send Feedback", detail: "Bugs, ideas, or numbers that look wrong. Goes to the developer.") {
+                        Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SettingsColor.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.bottom, -16)
+
+            VStack(spacing: 10) {
+                HStack(spacing: 18) {
+                    link("Website", Links.website)
+                    link("Privacy", Links.privacy)
+                    link("Acknowledgements", Links.acknowledgements)
+                }
+                Text("An independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic.")
+                    .font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: 380)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 4).padding(.bottom, 2)
         }
+    }
+
+    /// The app icon as a tile: it stays light in dark mode (it's the icon, not the UI).
+    private var icon: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(LinearGradient(colors: [Color(red: 1, green: 252 / 255, blue: 246 / 255), Color(red: 239 / 255, green: 230 / 255, blue: 216 / 255)],
+                                 startPoint: .top, endPoint: .bottom))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color(red: 38 / 255, green: 35 / 255, blue: 31 / 255).opacity(0.18), lineWidth: 0.5))
+            .overlay(BrandMark(size: 46, ink: Color(red: 38 / 255, green: 35 / 255, blue: 31 / 255),
+                               ember: Color(red: 1, green: 74 / 255, blue: 28 / 255)))
+            .frame(width: 96, height: 96)
+            .shadow(color: .black.opacity(scheme == .dark ? 0.4 : 0.14), radius: 11, y: 8)
+            .accessibilityHidden(true)
+    }
+
+    private var updateTitle: String {
+        switch updater.status {
+        case .idle: "Not checked yet"
+        case .checking: "Checking for updates…"
+        case .upToDate: "Up to date"
+        case .available(let v): "Version \(v) is available"
+        case .failed: "Couldn’t check for updates"
+        }
+    }
+
+    private var updateDetail: String? {
+        if case .failed(let message) = updater.status { return message }
+        guard let d = updater.lastChecked else { return nil }
+        let time = d.formatted(date: .omitted, time: .shortened)
+        let day = Calendar.current.isDateInToday(d) ? "today" : Calendar.current.isDateInYesterday(d) ? "yesterday"
+            : d.formatted(.dateTime.month(.abbreviated).day())
+        return "Checked \(day) at \(time)"
+    }
+
+    @ViewBuilder private var updateControl: some View {
+        switch updater.status {
+        case .checking: TallyLoader(size: 18, ink: SettingsColor.text)
+        case .available: Button("Install") { updater.checkForUpdates() }.disabled(!updater.canCheck)
+        default: Button("Check Now") { updater.probe() }.disabled(!updater.canCheck)
+        }
+    }
+
+    private func link(_ title: String, _ url: URL) -> some View {
+        Button { NSWorkspace.shared.open(url) } label: {
+            HStack(spacing: 4) {
+                Text(title).font(.system(size: 13, weight: .medium))
+                Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(SettingsColor.link)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(url.absoluteString)
+    }
+
+    /// Feedback goes to the developer through the user's own Mail app, with the version and macOS prefilled.
+    private func sendFeedback() {
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        var c = URLComponents()
+        c.scheme = "mailto"
+        c.path = Links.feedbackAddress
+        c.queryItems = [URLQueryItem(name: "subject", value: "Clausage feedback"),
+                        URLQueryItem(name: "body", value: "\n\n— Clausage \(AppVersion.short) (\(AppVersion.build)), macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)")]
+        if let url = c.url { NSWorkspace.shared.open(url) }
     }
 }

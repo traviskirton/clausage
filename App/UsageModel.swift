@@ -59,6 +59,10 @@ final class UsageModel: ObservableObject {
                 let dir = CommandLine.arguments[i + 1]
                 DispatchQueue.main.async { MacGallery.render(into: dir, model: self); exit(0) }
             }
+            if let i = CommandLine.arguments.firstIndex(of: "--demo-open"), i + 1 < CommandLine.arguments.count,
+               CommandLine.arguments[i + 1] == "settings" {
+                DispatchQueue.main.async { SettingsWindow.shared.show() }
+            }
             return
         }
         #endif

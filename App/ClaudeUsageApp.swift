@@ -22,11 +22,12 @@ struct MenuBarLabel: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        // When the percent is tinted the image can't be a template: white rays on a dark menubar, dark on a light one
-        // (Auto follows the menubar).
+        // When the percent is tinted, or Fill's base is pinned, the image can't be a template: white rays on a dark
+        // menubar, dark on a light one (Auto follows the menubar).
         let dark = fillBase == "white" || (fillBase == "auto" && scheme == .dark)
         return Image(nsImage: MenuBarIcon.image(display: MenuDisplay(rawValue: display) ?? .off,
-                                                limits: model.limits, tint: tint, darkMenubar: dark))
+                                                limits: model.limits, tint: tint, darkMenubar: dark,
+                                                pinnedBase: fillBase != "auto"))
     }
 }
 

@@ -1,7 +1,7 @@
 import AppKit
 
 enum MenuDisplay: String, CaseIterable {
-    case off, percent, ring, bars, fill
+    case off, percent, bars, fill
 }
 
 /// Draws the menubar item from the 12 logo rays, always monochrome (Ember never appears in the menu bar).
@@ -23,16 +23,17 @@ enum MenuBarIcon {
     /// Number of filled rays (0...12) for a percent.
     static func raysFilled(_ pct: Double) -> Int { Int((min(max(pct, 0), 100) / 100 * 12).rounded()) }
 
-    /// `darkMenubar` only matters when the percent is tinted (then the image can't be a template): white rays on a dark
-    /// menubar, near-black on a light one.
-    static func image(display: MenuDisplay, limits: [UsageLimit], tint: Bool, darkMenubar: Bool = true) -> NSImage {
+    /// `darkMenubar` only matters when the image can't be a template (a tinted percent, or Fill with a pinned base):
+    /// white rays on a dark menubar, near-black on a light one. `pinnedBase` is "Fill logo base" set to White or Dark.
+    static func image(display: MenuDisplay, limits: [UsageLimit], tint: Bool, darkMenubar: Bool = true,
+                      pinnedBase: Bool = false) -> NSImage {
         let top = highest(limits)
         let session = limits.first { $0.kind == "session" }
         let weekly = limits.first { $0.kind == "weekly_all" }
         let fills = display == .fill || display == .percent
         let lit = fills ? raysFilled(top?.percent ?? 0) : 12
         let pressure = (display == .percent && tint) ? pressureColor(limits) : nil
-        let template = pressure == nil
+        let template = pressure == nil && !(display == .fill && pinnedBase)
         let base: NSColor = template ? .black : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1))
         let height: CGFloat = 18, logoSize: CGFloat = 16
 
@@ -46,7 +47,6 @@ enum MenuBarIcon {
                     .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium), .foregroundColor: pressure ?? base])
                 text = t; extra = 4 + ceil(t.size().width)
             }
-        case .ring: if session != nil { extra = 4 + 14 }
         case .bars: if session != nil { extra = 4 + 22 }
         }
 
@@ -71,17 +71,6 @@ enum MenuBarIcon {
             case .off, .fill: break
             case .percent:
                 text?.draw(at: NSPoint(x: x0, y: (height - (text?.size().height ?? 0)) / 2))
-            case .ring:
-                guard let s = session else { break }
-                let c = NSPoint(x: x0 + 7, y: height / 2)
-                let track = NSBezierPath(ovalIn: NSRect(x: c.x - 5.9, y: c.y - 5.9, width: 11.8, height: 11.8))
-                track.lineWidth = 2.2
-                base.withAlphaComponent(0.32).setStroke(); track.stroke()
-                let arc = NSBezierPath()
-                arc.appendArc(withCenter: c, radius: 5.9, startAngle: 90,
-                              endAngle: 90 - 360 * CGFloat(min(s.percent, 100) / 100), clockwise: true)
-                arc.lineWidth = 2.2; arc.lineCapStyle = .round
-                base.setStroke(); arc.stroke()
             case .bars:
                 for (i, l) in [session, weekly ?? session].enumerated() {
                     guard let l else { continue }

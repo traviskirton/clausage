@@ -34,7 +34,7 @@ enum MacGallery {
         week.skills = [.init(name: "loop", percent: 4), .init(name: "dev-report", percent: 2)]
         week.agents = [.init(name: "Explore", percent: 4)]
         ClaudeCodeLogs.lastResult = ContributorsScan.Result(day: week, week: week, limitHits: ["five_hour": 56, "seven_day": 1])
-        for tab in [SettingsTab.general, .claudeCode, .accounts] {
+        for tab in [SettingsTab.general, .notifications, .claudeCode, .accounts, .about] {
             for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
                 snapshot(SettingsView(model: model, tab: tab), size: NSSize(width: 760, height: 600), appearance: appearance,
                          to: "\(dir)/settings-\(tab.rawValue.replacingOccurrences(of: " ", with: ""))-\(name).png")
