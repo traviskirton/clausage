@@ -746,9 +746,9 @@ struct AboutTab: View {
     @Environment(\.colorScheme) private var scheme
 
     enum Links {
-        static let website = URL(string: "https://postfl.com/clausage")!
-        static let privacy = URL(string: "https://postfl.com/clausage/privacy")!
-        static let acknowledgements = URL(string: "https://postfl.com/clausage/acknowledgements")!
+        static let website = URL(string: "https://clausage.ai")!
+        static let privacy = URL(string: "https://clausage.ai/privacy")!
+        static let acknowledgements = URL(string: "https://clausage.ai/acknowledgements")!
         static let feedbackAddress = "travis@postfl.com"
     }
 
