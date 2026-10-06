@@ -5,7 +5,7 @@ import UIKit
 
 enum Feedback {
     /// Where feedback goes: the developer. Sent from the user's own Mail app; Clausage has no server.
-    static let address = "travis@postfl.com"
+    static let address = "counter@clausage.ai"
     static let maxLength = 2000
 
     enum Kind: String, CaseIterable, Identifiable {

@@ -749,7 +749,7 @@ struct AboutTab: View {
         static let website = URL(string: "https://clausage.ai")!
         static let privacy = URL(string: "https://clausage.ai/privacy")!
         static let acknowledgements = URL(string: "https://clausage.ai/acknowledgements")!
-        static let feedbackAddress = "travis@postfl.com"
+        static let feedbackAddress = "counter@clausage.ai"
     }
 
     var body: some View {
