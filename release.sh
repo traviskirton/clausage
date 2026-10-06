@@ -104,12 +104,13 @@ ftp_put() {
     curl -sS --fail -m 300 --ssl-reqd --ftp-create-dirs -K - -T "$3" "ftp://$FTP_HOST/$4"
 }
 ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/$ZIP" "updates/$ZIP"
+ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/$ZIP" "updates/Clausage.zip"   # stable "latest" link (README, site)
 ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/appcast.xml" "updates/appcast.xml"
 ftp_put "$FTP_USER" "$FTP_PASS" "release/appcast.xml" "appcast.xml"
 unset SITE_FTP_PASS FTP_PASS
 
 # 5. Verify what the public sees
-for url in "$FEED_BASE/$ZIP" "$FEED_BASE/appcast.xml" "$LEGACY_FEED_BASE/appcast.xml"; do
+for url in "$FEED_BASE/$ZIP" "$FEED_BASE/Clausage.zip" "$FEED_BASE/appcast.xml" "$LEGACY_FEED_BASE/appcast.xml"; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
   [[ "$code" == 200 ]] || die "$url returned HTTP $code"
 done
