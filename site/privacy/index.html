@@ -4,10 +4,149 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy · Clausage</title>
+<meta name="description" content="Clausage reads your usage from claude.ai and keeps it on your device. No analytics, no ads, no tracking.">
+<meta name="theme-color" content="#FFFCF6">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/bricolage-grotesque-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
-<p><a href="/">Clausage</a></p>
-<h1>Privacy</h1>
-<p>Coming soon.</p>
+<header class="wrap nav">
+<a class="logo" href="/"><img class="mark" src="/assets/mark.svg" width="30" height="30" alt=""><span class="wordmark">clausage</span></a>
+<nav>
+<a href="/#widgets">Widgets</a>
+<a class="current" href="/privacy/" aria-current="page">Privacy</a>
+<a href="https://github.com/traviskirton/clausage">GitHub</a>
+<a class="pill" href="/#download">Download</a>
+</nav>
+</header>
+
+<main>
+<section class="wrap page-head">
+<span class="chip">Privacy policy</span>
+<h1 class="page-title">Nothing funny in the casing.</h1>
+<p class="page-lede">Clausage reads your usage from claude.ai and keeps it on your device. There are no analytics, no ads and no tracking. Apart from talking to claude.ai and checking for updates, nothing leaves your device unless you send feedback.</p>
+<span class="page-meta">Last updated October 6, 2026 · Covers Clausage for Mac and iPhone</span>
+</section>
+
+<section class="band">
+<div class="wrap glance">
+<div class="glance-top">
+<h2 class="h3">At a glance</h2>
+<div class="pills"><span>No analytics</span><span>No ads</span><span>No tracking</span></div>
+</div>
+<div class="glance-table">
+<div class="glance-row head"><span>What</span><span>Where it’s kept</span><span>Leaves your device</span></div>
+<div class="glance-row"><span>Sign-in session</span><span>iPhone Keychain (this device only) and the app’s web storage</span><span class="leaves">Only to claude.ai</span></div>
+<div class="glance-row"><span>Limits, plan and weekly split</span><span>On device, shared with your widgets</span><span>No</span></div>
+<div class="glance-row"><span>Your account email <small>(iPhone)</small></span><span>On device</span><span>Only in feedback, if you ask for a reply</span></div>
+<div class="glance-row"><span>Weekly usage history</span><span>On device</span><span>No</span></div>
+<div class="glance-row"><span>Claude Code totals <small>(Mac, opt-in)</small></span><span>In memory on your Mac, never saved</span><span>No</span></div>
+<div class="glance-row"><span>Feedback</span><span>Only exists if you send it</span><span class="leaves">To the counter, when you send it</span></div>
+</div>
+</div>
+</section>
+
+<section class="wrap policy">
+<aside class="toc">
+<span>On this page</span>
+<nav>
+<a href="#reads">What Clausage reads</a>
+<a href="#never">What it never keeps</a>
+<a href="#kept">Where it’s kept</a>
+<a href="#leaves">What leaves your device</a>
+<a href="#notifications">Notifications</a>
+<a href="#delete">Deleting your data</a>
+<a href="#changes">Changes</a>
+<a href="#contact">Contact</a>
+</nav>
+</aside>
+
+<article class="article">
+
+<div id="reads" class="clause">
+<span class="clause-num">01</span>
+<h2 class="h3">What Clausage reads</h2>
+<p class="prose">From claude.ai, using the session you signed in with:</p>
+<ul>
+<li>Your limit percentages and when each one resets.</li>
+<li>Your plan and how this week splits across products like Claude Code, Cowork and Chat.</li>
+<li>On iPhone, your usage credits and your account email, so you can tell which account is signed in. The Mac shows the organization name instead.</li>
+</ul>
+<p class="prose">On Mac, only if you turn on <b>Scan Claude Code sessions</b>: the session logs Claude Code wrote to <code>~/.claude</code> in the last 7 days. From each request Clausage takes the time, token counts, model and which skills, subagents, plugins and MCP servers were involved, then keeps only the totals.</p>
+</div>
+
+<div id="never" class="clause">
+<span class="clause-num">02</span>
+<h2 class="h3">What it never keeps</h2>
+<ul>
+<li><b>Your chats, prompts or files</b> on claude.ai. Clausage only reads the usage page.</li>
+<li><b>Your password.</b> You sign in on claude.ai’s own page. Clausage keeps only the session claude.ai hands back.</li>
+<li><b>Payment details.</b></li>
+<li><b>What’s inside your Claude Code sessions.</b> Prompts, code, responses and file paths are never extracted or stored.</li>
+</ul>
+</div>
+
+<div id="kept" class="clause">
+<span class="clause-num">03</span>
+<h2 class="h3">Where it’s kept</h2>
+<div class="kept">
+<div><span>Sign-in session</span><span>On iPhone, in the Keychain as this-device-only: never synced to iCloud Keychain and never restored to another device. A copy of the claude.ai cookie also stays in the app’s web storage until you sign out. On Mac, in the app’s own web storage, one per account.</span></div>
+<div><span>Latest usage</span><span>In the app’s shared container, so your widgets can read it. Updated on every refresh.</span></div>
+<div><span>Weekly history</span><span>On this device: a reading at each refresh, for this week and last, to draw the weekly running total.</span></div>
+<div><span>Claude Code totals</span><span>In memory on your Mac. They’re never saved; Clausage rebuilds them by scanning again.</span></div>
+</div>
+<p class="prose">The Mac and iPhone apps don’t talk to each other, and nothing is synced through iCloud. Each one signs in and keeps its own data. Like any app’s data, it can be part of your device backups.</p>
+</div>
+
+<div id="leaves" class="clause">
+<span class="clause-num">04</span>
+<h2 class="h3">What leaves your device</h2>
+<ul class="roomy">
+<li><b>Requests to claude.ai.</b> To fetch your usage, Clausage calls claude.ai with your session, the same way your browser does. On Mac it loads claude.ai’s usage page in a hidden window, so the page runs as it would in your browser. These requests are covered by <a href="https://www.anthropic.com/legal/privacy">Anthropic’s privacy policy</a>.</li>
+<li><b>Update checks, on Mac.</b> About every 6 hours and shortly after launch, unless you turn off <b>Check automatically</b>, Clausage asks clausage.ai whether a newer version exists. The request carries the app’s name and version, and like any web request, your IP address. No system profile is sent.</li>
+<li><b>Outage alerts, on Mac, if you turn them on.</b> Clausage checks <a href="https://status.claude.com">status.claude.com</a>, Anthropic’s public status page.</li>
+<li><b>Feedback, only when you send it.</b> It’s an email to the counter from your own mail app, so it comes from your address; there’s no feedback server. On Mac it’s your message plus the app and macOS version. On iPhone it’s your message and a screenshot of the Usage screen (attached unless you remove it), any photos you add, and, if you turn them on, diagnostics (app and iOS version, device model, plan, background refresh setting and the last refresh result) and a usage snapshot. <b>Preview What’s Sent</b> shows the message text before it goes.</li>
+</ul>
+<p class="prose">That’s all of it. Clausage has no analytics, crash reporting, ads or tracking, and there’s no Clausage server holding your data.</p>
+</div>
+
+<div id="notifications" class="clause">
+<span class="clause-num">05</span>
+<h2 class="h3">Notifications</h2>
+<p class="prose">Limit alerts are created on your device from the usage it already has. There’s no push server, and turning alerts off doesn’t change what Clausage reads from claude.ai.</p>
+</div>
+
+<div id="delete" class="clause">
+<span class="clause-num">06</span>
+<h2 class="h3">Deleting your data</h2>
+<ul class="roomy">
+<li><b>iPhone:</b> Settings → Privacy → <b>Clear Cached Usage</b> removes stored usage and history but keeps you signed in; Home Screen widgets show “No data” until the next refresh. <b>Sign Out and Delete Everything</b> removes your session, cached usage, weekly history and settings.</li>
+<li><b>Mac:</b> Settings → Accounts → <b>Disconnect</b> removes that account’s session, history and stored usage. Turning off <b>Scan Claude Code sessions</b> removes Clausage’s access to <code>~/.claude</code> and discards the totals.</li>
+<li><b>Before deleting the iPhone app,</b> sign out. Keychain entries can outlive the app, and signing out removes the session.</li>
+<li><b>Feedback you’ve sent:</b> email us and we’ll delete it.</li>
+</ul>
+</div>
+
+<div id="changes" class="clause">
+<span class="clause-num">07</span>
+<h2 class="h3">Changes to this policy</h2>
+<p class="prose">If anything here changes, this page and the date at the top change with it. Anything that changes what leaves your device will also be called out in the release notes.</p>
+</div>
+
+<div id="contact" class="clause">
+<span class="clause-num">08</span>
+<h2 class="h3">Contact</h2>
+<p class="prose">Questions about privacy: <a href="mailto:counter@clausage.ai?subject=Feedback&amp;body=I%20like%20your%20clausage.">counter@clausage.ai</a>, or <a href="https://github.com/traviskirton/clausage/issues">open an issue on GitHub</a>.</p>
+</div>
+
+</article>
+</section>
+</main>
+
+<footer class="wrap page-footer">
+<span class="fine">Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic.</span>
+<nav><a href="https://github.com/traviskirton/clausage">GitHub</a><a href="/privacy/">Privacy</a><a href="/acknowledgements/">Acknowledgements</a><a href="mailto:counter@clausage.ai?subject=Feedback&amp;body=I%20like%20your%20clausage.">Send feedback</a></nav>
+</footer>
 </body>
 </html>

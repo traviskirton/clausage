@@ -143,7 +143,7 @@ struct FeedbackScreen: View {
                 Toggle(isOn: $diagnostics) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Diagnostics")
-                        Text("App and iOS version, last refresh time and result, and which limits failed to parse.")
+                        Text("App and iOS version, device model, plan, last refresh time and result, which limits failed to parse, and whether background refresh is on.")
                             .font(.system(size: 13)).foregroundStyle(Color("Ink2"))
                     }
                 }
@@ -162,12 +162,12 @@ struct FeedbackScreen: View {
                 Section {
                     Toggle("Reply to \(email)", isOn: $replyTo)
                 } footer: {
-                    Text("Goes to the developer, not to Anthropic. No account details or chats are ever included.")
+                    Text("Goes to the developer, not to Anthropic. No chats or passwords are ever included.")
                 }
                 .listRowBackground(Color("Cell"))
             } else {
                 Section {} footer: {
-                    Text("Goes to the developer, not to Anthropic. No account details or chats are ever included.")
+                    Text("Goes to the developer, not to Anthropic. No chats or passwords are ever included.")
                 }
             }
         }
