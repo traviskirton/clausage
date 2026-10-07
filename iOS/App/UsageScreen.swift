@@ -320,8 +320,7 @@ private struct UsageNavigation: ViewModifier {
                 .navigationTitle("Clausage")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
-                    ToolbarItem(placement: .largeTitle) { TitleRow(plan: plan) }
-                    ToolbarItem(placement: .title) { Text("Clausage").font(.system(size: 17, weight: .semibold)) }
+                    ToolbarItem(placement: .largeTitle) { TitleRow(plan: plan).padding(.top, 14).padding(.bottom, 22) }
                     gear
                 }
         } else {
