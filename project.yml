@@ -105,6 +105,8 @@ targets:
       properties:
         BGTaskSchedulerPermittedIdentifiers: [com.postfl.clausage-ios.refresh]
         UIBackgroundModes: [fetch]
+        # Only standard HTTPS (exempt), so App Store Connect doesn't ask about encryption on every upload.
+        ITSAppUsesNonExemptEncryption: false
     entitlements:
       path: iOS/App/ClausageiOS.entitlements
       properties:
@@ -142,6 +144,7 @@ targets:
       - Shared/UsageClient.swift
       - Shared/WeeklyHistory.swift
       - Shared/Forecast.swift
+      - Shared/SampleData.swift
       - App/ContributorsScan.swift
     settings:
       base:

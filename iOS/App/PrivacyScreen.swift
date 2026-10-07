@@ -46,13 +46,13 @@ struct PrivacyScreen: View {
             } header: { SectionTitle("What it never reads") }
 
             Section {
-                kept("Sign-in session", "Keychain", "This iPhone only. Never synced or backed up.")
-                kept("Latest usage", "App Group", "Shared with your widgets. Replaced on every refresh.")
+                kept("Sign-in session", "Keychain", "This iPhone only. Never synced to iCloud Keychain or restored to another device.")
+                kept("Latest usage", "App Group", "Shared with your widgets. Updated on every refresh.")
                 kept("Weekly history", "App Group", "This week’s and last week’s running total, recorded on this iPhone for the chart.")
             } header: { SectionTitle("Where it’s kept") }
 
             Section {
-                item(false, "Nothing, unless you send feedback", "Diagnostics are opt-in, and you can preview them before sending.")
+                item(false, "Nothing else, unless you send feedback", "Clausage only talks to claude.ai. Feedback is an email from your own Mail app; diagnostics are opt-in and you can preview them.")
             } header: { SectionTitle("What leaves your phone") }
 
             Section {
@@ -70,6 +70,17 @@ struct PrivacyScreen: View {
                     .foregroundStyle(Color("CriticalText"))
             }
             .listRowBackground(Color("Cell"))
+
+            Section {
+                Link(destination: URL(string: "https://clausage.ai/privacy")!) {
+                    HStack {
+                        Text("Full Privacy Policy").foregroundStyle(Color("Ink"))
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
+                    }
+                }
+                .listRowBackground(Color("Cell"))
+            }
 
             Section {} footer: {
                 Text("Clausage isn’t affiliated with Anthropic. claude.ai is covered by Anthropic’s own privacy policy.")
