@@ -50,6 +50,7 @@ struct UsageScreen: View {
             let args = CommandLine.arguments
             if let i = args.firstIndex(of: "--demo-open"), i + 1 < args.count { debugScreen = args[i + 1] }
             if args.contains("--demo-welcome") { model.signedIn = false }
+            if args.contains("--demo-signin") { model.signedIn = false; showSignIn = true }
             // `--sample <id>`: start sample mode on a scenario, the same path as "Try it with sample data".
             if let i = args.firstIndex(of: "--sample"), i + 1 < args.count { model.startSample(args[i + 1]) }
             #endif

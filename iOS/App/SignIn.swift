@@ -44,6 +44,24 @@ struct ClaudeWebView: UIViewRepresentable {
         init(onSignedIn: @escaping () -> Void) { self.onSignedIn = onSignedIn }
 
         func cookiesDidChange(in cookieStore: WKHTTPCookieStore) { Task { @MainActor in await tryComplete() } }
+
+        /// Top-level pages stay on claude.ai and the Google / Apple sign-in pages (`SignInPolicy`); a tapped link to
+        /// anywhere else opens in Safari. Applies to the sign-in popups too.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+            switch decide(navigationAction) {
+            case .allow: decisionHandler(.allow)
+            case .openOutside:
+                decisionHandler(.cancel)
+                if let url = navigationAction.request.url { UIApplication.shared.open(url) }
+            case .block: decisionHandler(.cancel)
+            }
+        }
+
+        private func decide(_ action: WKNavigationAction) -> SignInPolicy.Decision {
+            SignInPolicy.decide(action.request.url, mainFrame: action.targetFrame?.isMainFrame ?? true,
+                                userTapped: action.navigationType == .linkActivated)
+        }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { Task { @MainActor in await tryComplete() } }
 
         // Google / SSO popups: a real popup view (from WebKit's configuration) laid over the sign-in page, so it keeps
@@ -52,10 +70,18 @@ struct ClaudeWebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            switch decide(navigationAction) {
+            case .allow: break
+            case .openOutside:
+                if let url = navigationAction.request.url { UIApplication.shared.open(url) }
+                return nil
+            case .block: return nil
+            }
             popup?.removeFromSuperview()
             let v = WKWebView(frame: webView.bounds, configuration: configuration)
             v.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             v.uiDelegate = self
+            v.navigationDelegate = self
             webView.addSubview(v)
             popup = v
             return v

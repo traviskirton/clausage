@@ -19,6 +19,9 @@ settings:
     DEVELOPMENT_TEAM: G3GED29J33
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.0.6"
+    # iPhone app and its widgets: the App Store Connect version (the Mac stays on 0.0.x). Its own name, so
+    # release.sh's MARKETING_VERSION bump never touches it.
+    IPHONE_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "5"
     ENABLE_HARDENED_RUNTIME: YES
     # Xcode's "recommended settings" (adopted here because the .xcodeproj is generated)
@@ -101,6 +104,7 @@ targets:
       base:
         PRODUCT_NAME: Clausage
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios
+        MARKETING_VERSION: $(IPHONE_VERSION)
         ASSETCATALOG_COMPILER_APPICON_NAME: clausage-fresh
         ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Smoked AppIcon-Grilled
         GENERATE_INFOPLIST_FILE: YES
@@ -131,6 +135,7 @@ targets:
       base:
         PRODUCT_NAME: ClausageWidget
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios.widget
+        MARKETING_VERSION: $(IPHONE_VERSION)
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Clausage
     info:
@@ -153,6 +158,7 @@ targets:
       - Shared/WeeklyHistory.swift
       - Shared/Forecast.swift
       - Shared/SampleData.swift
+      - Shared/SignInPolicy.swift
       - App/ContributorsScan.swift
     settings:
       base:

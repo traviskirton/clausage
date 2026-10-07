@@ -400,8 +400,8 @@ struct SectionTitle: View {
 
 enum AppInfo {
     static let privacyURL = URL(string: "https://clausage.ai/privacy/")!
-    /// The App Store's numeric Apple ID for the iOS app (App Store Connect → App Information). nil until it's known.
-    static let appStoreID: String? = nil
+    /// The iOS app's Apple ID in App Store Connect (App Information).
+    static let appStoreID: String? = "6819942596"
     static var writeReviewURL: URL? {
         appStoreID.flatMap { URL(string: "https://apps.apple.com/app/id\($0)?action=write-review") }
     }
