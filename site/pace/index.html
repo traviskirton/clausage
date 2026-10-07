@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Are you on pace for your Claude week? · Clausage</title>
+<meta name="description" content="You’re on pace for your Claude weekly limit if the share you’ve used is no more than the share of the week that has passed. Here’s how to work it out, with examples.">
+<meta name="theme-color" content="#FFFCF6">
+<link rel="canonical" href="https://clausage.ai/pace/">
+<meta property="og:site_name" content="Clausage">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Are you on pace for your Claude week?">
+<meta property="og:description" content="Used % vs time passed: the one-line rule for Claude’s weekly limit, with worked examples.">
+<meta property="og:url" content="https://clausage.ai/pace/">
+<meta property="og:image" content="https://clausage.ai/assets/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/bricolage-grotesque-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {"@type": "Article",
+   "headline": "Are you on pace for your Claude week?",
+   "description": "How to tell whether you're using your Claude weekly limit faster than the week lasts.",
+   "datePublished": "2026-10-06",
+   "dateModified": "2026-10-06",
+   "mainEntityOfPage": "https://clausage.ai/pace/",
+   "publisher": {"@type": "Organization", "name": "Clausage", "url": "https://clausage.ai/"}},
+  {"@type": "BreadcrumbList",
+   "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Clausage", "item": "https://clausage.ai/"},
+    {"@type": "ListItem", "position": 2, "name": "Pace", "item": "https://clausage.ai/pace/"}]}
+ ]
+}
+</script>
+</head>
+<body>
+<header class="wrap nav">
+<a class="logo" href="/"><img class="mark" src="/assets/mark.svg" width="30" height="30" alt=""><span class="wordmark">clausage</span></a>
+<nav>
+<a href="/#widgets">Widgets</a>
+<a href="/privacy/">Privacy</a>
+<a href="https://github.com/traviskirton/clausage">GitHub</a>
+<a class="pill" href="/#download">Download</a>
+</nav>
+</header>
+
+<main>
+<section class="wrap page-head">
+<span class="chip">Guide</span>
+<h1 class="page-title"><span class="kicker">Claude weekly limit pace</span>Are you on pace for the week?</h1>
+<p class="page-lede">You’re on pace if the share of your weekly limit you’ve used is no more than the share of the week that has passed. Two days into a seven-day week, that’s about 29%. Ahead of that, you’ll run out before the reset.</p>
+<span class="page-meta">Updated October 6, 2026 · Based on Anthropic’s Pro and Max help pages</span>
+</section>
+
+<section class="band">
+<div class="wrap section pace-examples">
+<div class="section-head">
+<h2 class="h3">Same moment, three weeks</h2>
+<p class="small">Your week resets Tuesday at 5:00 AM. It’s Saturday at 5:00 PM: 4½ of 7 days have passed, so an even pace puts you at <b>64%</b>. The tick marks that spot.</p>
+</div>
+<div class="pace-grid">
+<div class="card forecast-card"><div class="forecast-row"><div class="meter-top"><span>All models</span><span class="num">45%</span></div><div class="bar ticked gray" style="--v:45%;--pace:64%"></div></div><div><span class="title">Behind the tick</span><span class="small">Room to spare. You could use more of your plan this week.</span></div></div>
+<div class="card forecast-card"><div class="forecast-row"><div class="meter-top"><span>All models</span><span class="num">64%</span></div><div class="bar ticked gray" style="--v:64%;--pace:64%"></div></div><div><span class="title">On the tick</span><span class="small">Exactly on pace. Keep this up and you land at 100% right at the reset.</span></div></div>
+<div class="card forecast-card"><div class="forecast-row"><div class="meter-top"><span>All models</span><span class="num">80%</span></div><div class="bar ticked gray" style="--v:80%;--pace:64%"></div></div><div><span class="title">Ahead of the tick</span><span class="small">At this rate you’d hit 100% around Sunday 8 PM, about a day and a half before the reset.</span></div></div>
+</div>
+</div>
+</section>
+
+<section class="wrap policy">
+<aside class="toc">
+<span>On this page</span>
+<nav>
+<a href="#rule">The rule</a>
+<a href="#start">When your week starts</a>
+<a href="#math">Working it out</a>
+<a href="#session">The 5-hour session</a>
+<a href="#models">Per-model limits</a>
+<a href="#ahead">If you’re ahead</a>
+<a href="#check">Checking it without the math</a>
+</nav>
+</aside>
+
+<article class="article">
+
+<div id="rule" class="clause">
+<h2 class="h3">The rule</h2>
+<p class="prose"><b>Used % ≤ time passed %.</b> If you’ve used less of your weekly limit than the share of the week that’s gone by, you’ll make it to the reset at this pace. If you’ve used more, you won’t.</p>
+<p class="prose">Spread evenly, a week is about <b>14% a day</b> (100 ÷ 7). That’s the number to keep in mind if you only remember one.</p>
+</div>
+
+<div id="start" class="clause">
+<h2 class="h3">When your week starts</h2>
+<p class="prose">Not on Monday, and not when you subscribed. Anthropic says your weekly limit “resets at a fixed time each week that is assigned to your account,” and that the day and time “stay the same regardless of when you start using Claude.” Your week starts at your last reset.</p>
+<p class="prose">To find it, open <b>Settings → Usage</b> on claude.ai. It shows when each limit resets next. Count back seven days from that, and that’s where your week began.</p>
+</div>
+
+<div id="math" class="clause">
+<h2 class="h3">Working it out by hand</h2>
+<ul class="roomy">
+<li><b>Time passed:</b> hours since your last weekly reset ÷ 168 (the hours in a week). Example: reset Tuesday 5:00 AM, now Saturday 5:00 PM, so 108 hours ÷ 168 = <b>64%</b>.</li>
+<li><b>Used:</b> the weekly percentage in Settings → Usage.</li>
+<li><b>Compare:</b> 80% used against 64% of the week means you’re 16 points ahead.</li>
+<li><b>When you’d run out:</b> divide what you’ve used by the days so far for a daily rate (80 ÷ 4.5 ≈ 18% a day), then see how long the rest lasts (20 ÷ 18 ≈ 1.1 days). Here that’s Sunday evening, well before Tuesday’s reset.</li>
+</ul>
+<p class="prose">It’s a straight-line guess. A heavy Monday and a quiet weekend will throw it off, which is why it’s worth checking more than once.</p>
+</div>
+
+<div id="session" class="clause">
+<h2 class="h3">The 5-hour session has a pace too</h2>
+<p class="prose">Your current session limit “will reset every five hours,” per Anthropic. The same rule applies over a shorter window: halfway through the five hours, an even pace is 50%. Session limits burn and recover fast, so the weekly pace is usually the one that decides whether you’re locked out for hours or for days.</p>
+</div>
+
+<div id="models" class="clause">
+<h2 class="h3">Check per-model limits separately</h2>
+<p class="prose">Settings → Usage can show more than one weekly bar: one for all models and, on plans that include it, one for Fable. On Max plans, Anthropic says Fable can use up to half of your weekly limit and uses it faster than other models. So that bar can run out while “All models” still looks fine. Work out its pace the same way.</p>
+</div>
+
+<div id="ahead" class="clause">
+<h2 class="h3">If you’re ahead of pace</h2>
+<p class="prose">Everything you do in Claude counts toward the same limit: chat, Claude Code and the desktop app. The usual ways to slow down:</p>
+<ul>
+<li>Start a new conversation instead of continuing a very long one.</li>
+<li>Use a lighter model for routine work and save the biggest one for the hard parts.</li>
+<li>In Claude Code: run fewer sessions in parallel, <code>/compact</code> mid-task, <code>/clear</code> between tasks, and point simple subagents at a cheaper model.</li>
+</ul>
+<p class="prose">Anthropic’s <a href="https://support.claude.com/en/articles/9797557-usage-limit-best-practices">usage limit best practices</a> covers more.</p>
+</div>
+
+<div id="check" class="clause">
+<h2 class="h3">Checking it without the math</h2>
+<p class="prose">Settings → Usage shows how much you’ve used and when each limit resets, so you can do the sums above whenever you look.</p>
+<p class="prose"><b>Clausage</b> does them for you. It’s a free, open-source Mac menu bar app: every limit gets a bar with a tick at the even-pace spot, and past 85% it shows when you’ll run out at your current pace, like <b>Out ~Mon 9:40 PM</b>. Bar ahead of the tick? Slow down and chew.</p>
+<div class="buttons">
+<a class="button button-dark on-mac" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Download for Mac</a>
+<a class="button button-dark on-phone send-to-mac" href="mailto:?subject=Clausage%20for%20Mac&amp;body=https%3A%2F%2Fclausage.ai%2F" aria-label="Send the Clausage link to your Mac"><span class="icon-laptop" aria-hidden="true"></span>Send it to my Mac</a>
+<a class="button button-light" href="/">How Clausage works</a>
+</div>
+</div>
+
+</article>
+</section>
+</main>
+
+<footer class="wrap page-footer">
+<span class="fine">Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic. Limits described here come from Anthropic’s help pages as of the date above; check Settings → Usage for yours.</span>
+<nav><a href="https://github.com/traviskirton/clausage">GitHub</a><a href="https://www.instagram.com/clau.sage/">Instagram</a><a href="/privacy/">Privacy</a><a href="/acknowledgements/">Acknowledgements</a><a href="mailto:counter@clausage.ai?subject=Feedback&amp;body=I%20like%20your%20clausage.">Send feedback</a></nav>
+</footer>
+<script>
+(function () {
+  var ref = new URLSearchParams(location.search).get('ref');
+  var url = 'https://clausage.ai/?ref=' + encodeURIComponent((ref ? ref + '-' : 'pace-') + 'send');
+  document.querySelectorAll('.send-to-mac').forEach(function (a) {
+    a.href = 'mailto:?subject=' + encodeURIComponent('Clausage for Mac') + '&body=' + encodeURIComponent(url);
+    if (!navigator.share) return;
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      navigator.share({ title: 'Clausage for Mac', text: 'Your Claude limits in the Mac menu bar', url: url }).catch(function () {});
+    });
+  });
+})();
+</script>
+</body>
+</html>
