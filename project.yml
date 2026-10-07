@@ -95,8 +95,7 @@ targets:
     # App icons: iOS/App/clausage-fresh.icon (primary), AppIcon-Smoked.icon and AppIcon-Grilled.icon (alternates, picked
     # in Settings). Picker previews in iOS/App/IconPreviews.xcassets come from tools/make-icon-previews.sh.
     sources:
-      - path: iOS/App
-        excludes: [clausage-tally.icon]
+      - iOS/App
       - iOS/Shared
       - Shared
       - SharedUI

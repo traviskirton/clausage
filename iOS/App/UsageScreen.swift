@@ -34,11 +34,7 @@ struct UsageScreen: View {
                                       onSettings: { showSettings = true }))
             .navigationDestination(isPresented: $showSettings) { SettingsScreen(model: model) }
             .navigationDestination(isPresented: Binding(get: { debugScreen != nil }, set: { if !$0 { debugScreen = nil } })) {
-                switch debugScreen {
-                case "privacy": PrivacyScreen(model: model)
-                case "feedback": FeedbackScreen(model: model)
-                default: SettingsScreen(model: model)
-                }
+                SettingsScreen(model: model)
             }
         }
         .tint(Color("Ink"))

@@ -7,7 +7,7 @@ import Foundation
 enum SignInPolicy {
     enum Decision: Equatable { case allow, openOutside, block }
 
-    /// Exact hosts, plus any subdomain of claude.ai.
+    /// Exact hosts, plus any subdomain of claude.ai and Google's regional sign-in hosts.
     static let hosts: Set<String> = [
         "claude.ai",
         "accounts.google.com", "accounts.youtube.com",      // Google sign-in and its cookie check
@@ -17,7 +17,13 @@ enum SignInPolicy {
 
     static func isAllowed(host: String) -> Bool {
         let h = host.lowercased()
-        return hosts.contains(h) || h.hasSuffix(".claude.ai")
+        return hosts.contains(h) || h.hasSuffix(".claude.ai") || isRegionalGoogleAccounts(h)
+    }
+
+    /// After a password, Google signs you in to its country sites too, hopping the page through
+    /// accounts.google.ca, accounts.google.co.uk, accounts.google.com.au… on the way back to claude.ai.
+    private static func isRegionalGoogleAccounts(_ h: String) -> Bool {
+        h.range(of: #"^accounts\.google\.(com?\.)?[a-z]{2,3}$"#, options: .regularExpression) != nil
     }
 
     /// - Parameters:

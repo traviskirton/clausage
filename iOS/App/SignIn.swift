@@ -5,10 +5,12 @@ import WebKit
 /// shared Keychain and `onSignedIn` fires. The web view's own cookies are only a means to get there; refreshes use the Keychain copy.
 struct ClaudeWebView: UIViewRepresentable {
     var onSignedIn: () -> Void
+    /// A page `SignInPolicy` refused to open (shown in debug builds, to find sign-in hosts it's missing).
+    var onBlocked: (URL) -> Void = { _ in }
 
     static let store = WKWebsiteDataStore.default()
 
-    func makeCoordinator() -> Coordinator { Coordinator(onSignedIn: onSignedIn) }
+    func makeCoordinator() -> Coordinator { Coordinator(onSignedIn: onSignedIn, onBlocked: onBlocked) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -37,11 +39,15 @@ struct ClaudeWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKHTTPCookieStoreObserver {
         let onSignedIn: () -> Void
+        let onBlocked: (URL) -> Void
         weak var webView: WKWebView?
         private var busy = false
         private var done = false
 
-        init(onSignedIn: @escaping () -> Void) { self.onSignedIn = onSignedIn }
+        init(onSignedIn: @escaping () -> Void, onBlocked: @escaping (URL) -> Void) {
+            self.onSignedIn = onSignedIn
+            self.onBlocked = onBlocked
+        }
 
         func cookiesDidChange(in cookieStore: WKHTTPCookieStore) { Task { @MainActor in await tryComplete() } }
 
@@ -54,7 +60,9 @@ struct ClaudeWebView: UIViewRepresentable {
             case .openOutside:
                 decisionHandler(.cancel)
                 if let url = navigationAction.request.url { UIApplication.shared.open(url) }
-            case .block: decisionHandler(.cancel)
+            case .block:
+                decisionHandler(.cancel)
+                if let url = navigationAction.request.url { onBlocked(url) }
             }
         }
 
@@ -75,7 +83,9 @@ struct ClaudeWebView: UIViewRepresentable {
             case .openOutside:
                 if let url = navigationAction.request.url { UIApplication.shared.open(url) }
                 return nil
-            case .block: return nil
+            case .block:
+                if let url = navigationAction.request.url { onBlocked(url) }
+                return nil
             }
             popup?.removeFromSuperview()
             let v = WKWebView(frame: webView.bounds, configuration: configuration)
@@ -119,6 +129,7 @@ struct SignInSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var connected = false
     @State private var who: String?
+    @State private var blocked: URL?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -143,8 +154,18 @@ struct SignInSheet: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Secure page on claude.ai")
 
-            ZStack {
-                ClaudeWebView(onSignedIn: { Task { await finish() } })
+            ZStack(alignment: .bottom) {
+                ClaudeWebView(onSignedIn: { Task { await finish() } }, onBlocked: { blocked = $0 })
+                #if DEBUG
+                if let blocked {
+                    Text("Blocked: \(blocked.host ?? blocked.absoluteString)\(blocked.host == nil ? "" : blocked.path)")
+                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(.white)
+                        .lineLimit(2).padding(10)
+                        .background(Color.red.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+                        .padding(12)
+                        .textSelection(.enabled)
+                }
+                #endif
                 if connected {
                     ConnectedView(who: who).transition(.opacity)
                 }

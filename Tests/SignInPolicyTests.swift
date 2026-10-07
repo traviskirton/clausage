@@ -9,7 +9,10 @@ final class SignInPolicyTests: XCTestCase {
     func testSignInPagesLoad() {
         for s in ["https://claude.ai/login", "https://claude.ai/login?returnTo=%2F", "https://www.claude.ai/",
                   "https://accounts.google.com/o/oauth2/v2/auth?client_id=x", "https://accounts.youtube.com/accounts/SetSID",
-                  "https://appleid.apple.com/auth/authorize?client_id=x", "https://idmsa.apple.com/appleauth/auth"] {
+                  "https://appleid.apple.com/auth/authorize?client_id=x", "https://idmsa.apple.com/appleauth/auth",
+                  // Google's sign-in hop through its country sites after a password
+                  "https://accounts.google.ca/accounts/SetSID", "https://accounts.google.co.uk/accounts/SetSID",
+                  "https://accounts.google.com.au/accounts/SetSID", "https://accounts.google.de/accounts/SetSID"] {
             XCTAssertEqual(top(s), .allow, s)
         }
         XCTAssertEqual(top("about:blank"), .allow)          // a popup before it loads
@@ -24,6 +27,9 @@ final class SignInPolicyTests: XCTestCase {
         XCTAssertEqual(top("http://claude.ai/login"), .block)                     // https only
         XCTAssertEqual(top("https://claude.ai.evil.example/login"), .block)       // lookalike host
         XCTAssertEqual(top("https://notclaude.ai/"), .block)
+        XCTAssertEqual(top("https://accounts.google.evil.example/"), .block)
+        XCTAssertEqual(top("https://accounts.google.ca.evil.example/"), .block)
+        XCTAssertEqual(top("https://mail.google.ca/"), .block)
         XCTAssertEqual(top("mailto:support@anthropic.com", tapped: true), .openOutside)
         XCTAssertEqual(SignInPolicy.decide(nil, mainFrame: true, userTapped: true), .block)
     }

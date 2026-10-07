@@ -45,8 +45,6 @@ final class PhoneModel: ObservableObject {
     @Published var account = SessionStore.load()?.orgName
     @Published var message: String?
     @Published var refreshing = false
-    /// Result of the last refresh, for diagnostics in Send Feedback.
-    @Published var lastResult: String?
     /// Debug-only fixture mode for screenshots (`--demo`): no network.
     let demo: Bool
 
@@ -87,7 +85,7 @@ final class PhoneModel: ObservableObject {
             try? await Task.sleep(for: .milliseconds(600))
             SampleMode.refresh()
             refreshing = false
-            message = nil; lastResult = "sample"
+            message = nil
             sync()
             WidgetCenter.shared.reloadAllTimelines()
             return true
@@ -97,9 +95,9 @@ final class PhoneModel: ObservableObject {
         defer { refreshing = false }
         let ok: Bool
         switch await UsageSource.refresh() {
-        case .ok: message = nil; ok = true; lastResult = "ok"
-        case .signedOut: message = "Signed out. Sign in again to keep your usage up to date."; ok = false; lastResult = "signed out"
-        case .failed(let text): message = text; ok = false; lastResult = "failed: \(text)"
+        case .ok: message = nil; ok = true
+        case .signedOut: message = "Signed out. Sign in again to keep your usage up to date."; ok = false
+        case .failed(let text): message = text; ok = false
         }
         sync()
         await PhoneNotifier.process()
