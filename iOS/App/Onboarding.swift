@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The app icon, drawn: rays and halo on the Paper → Sand gradient (as in `clausage-icon.icon`).
+/// The app icon, drawn: the tally (four Ink strokes, Ember slash) on the Paper → Sand gradient, as in
+/// `iOS/App/clausage-tally.icon`.
 struct AppIconView: View {
     var size: CGFloat
     var body: some View {
@@ -9,7 +10,8 @@ struct AppIconView: View {
             RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .fill(LinearGradient(colors: [Color(red: 1, green: 0.988, blue: 0.965), Color(red: 0.902, green: 0.863, blue: 0.784)],
                                      startPoint: .top, endPoint: .bottom))
-            BrandMark(size: size * 0.6, ink: Color(red: 0.149, green: 0.137, blue: 0.122), ember: Color(red: 1, green: 0.29, blue: 0.11))
+            Tally(size: size * 0.78, filled: 4, slash: 1, ink: Color(red: 0.149, green: 0.137, blue: 0.122),
+                  ember: Color(red: 1, green: 0.29, blue: 0.11))
         }
         .frame(width: size, height: size)
         .shadow(color: .black.opacity(0.12), radius: size * 0.06, y: size * 0.03)

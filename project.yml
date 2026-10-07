@@ -89,12 +89,12 @@ targets:
   ClausageiOS:
     type: application
     platform: iOS
-    sources: [iOS/App, iOS/Shared, Shared, SharedUI, design/clausage-icon.icon]
+    sources: [iOS/App, iOS/Shared, Shared, SharedUI]      # app icon: iOS/App/clausage-tally.icon
     settings:
       base:
         PRODUCT_NAME: Clausage
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios
-        ASSETCATALOG_COMPILER_APPICON_NAME: clausage-icon
+        ASSETCATALOG_COMPILER_APPICON_NAME: clausage-tally
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
