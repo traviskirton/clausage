@@ -246,6 +246,7 @@ struct UsageScreen: View {
                 .foregroundStyle(Color("Ink"))
                 .frame(width: 44, height: 44)
                 .modifier(GlassCircle())
+                .contentShape(Circle())     // a plain button only hits the glyph's strokes; the glass around it doesn't count
         }
         .buttonStyle(.plain)
         .padding(.trailing, 16)
