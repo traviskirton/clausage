@@ -21,11 +21,19 @@ die() { echo "error: $*" >&2; exit 1; }
 FTP_PASS=$(security find-generic-password -s "$SITE_KEYCHAIN_SERVICE" -a "$SITE_FTP_USER" -w 2>/dev/null) \
   || die "FTP password not in Keychain (service $SITE_KEYCHAIN_SERVICE, account $SITE_FTP_USER)"
 
+# Stage a copy so the HTML can carry cache-busting versions: the host caches assets for a week, so every page asks
+# for site.css?v=<content hash> and a changed stylesheet is fetched right away.
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+cp -R site/. "$STAGE/"
+CSS_V=$(shasum -a 256 site/assets/site.css | cut -c1-10)
+find "$STAGE" -name '*.html' -exec perl -pi -e "s{/assets/site\.css(\?v=[0-9a-f]+)?\"}{/assets/site.css?v=$CSS_V\"}g" {} +
+
 ftp_put() {
   printf 'user = "%s:%s"\n' "$SITE_FTP_USER" "$FTP_PASS" |
-    curl -sS --fail -m 120 --ssl-reqd --ftp-create-dirs -K - -T "site/$1" "ftp://$FTP_HOST/$1"
+    curl -sS --fail -m 120 --ssl-reqd --ftp-create-dirs -K - -T "$STAGE/$1" "ftp://$FTP_HOST/$1"
 }
-for f in $(cd site && find . -type f ! -name .DS_Store | sed 's|^\./||' | sort); do
+for f in $(cd "$STAGE" && find . -type f ! -name .DS_Store | sed 's|^\./||' | sort); do
   ftp_put "$f"
   echo "uploaded $f"
 done
