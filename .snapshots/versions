@@ -33,3 +33,9 @@ Clausage-branded Mac and iOS apps still built as `Claude Usage.app` with bundle 
 **Multi-account Mac app, macOS 14 minimum**
 
 Clausage 0.0.5 in progress: Google sign-in popup fix, Free plan state on Mac and iPhone, Pro/Max copy on the site and README. The Mac app supports several claude.ai accounts, each in its own `WKWebsiteDataStore(forIdentifier:)`, which needs macOS 14. Limitations: no macOS 13 support.
+
+## v6-pre-ios-main
+
+**iPhone main screen before the v3 handoff**
+
+Clausage 0.0.6 in progress: iOS App Store requirements, sample data mode, tally app icon, brand mark halo fix, gear hit-area fix. Main screen still has the custom header (starburst mark + "Usage"), a hidden navigation bar with a floating glass gear, and the "Limiting now" chip.
