@@ -39,3 +39,9 @@ Clausage 0.0.5 in progress: Google sign-in popup fix, Free plan state on Mac and
 **iPhone main screen before the v3 handoff**
 
 Clausage 0.0.6 in progress: iOS App Store requirements, sample data mode, tally app icon, brand mark halo fix, gear hit-area fix. Main screen still has the custom header (starburst mark + "Usage"), a hidden navigation bar with a floating glass gear, and the "Limiting now" chip.
+
+## v7-pre-ios-settings
+
+**iPhone main screen v3, Settings before the v2 handoff**
+
+Main screen rebuilt to the v3 handoff (system nav bar, tally title row, runout chip, idle/full rows). Settings still has the old notification names, in-app Feedback and Privacy screens, one app icon (the tally) and no Acknowledgements.
