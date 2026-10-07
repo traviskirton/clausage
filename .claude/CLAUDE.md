@@ -43,6 +43,7 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 - Feed: `https://clausage.ai/updates/appcast.xml`. Public key is in `project.yml`; never commit or print the private key.
 - Legacy feed: `https://updates.postfl.com/claude-usage/appcast.xml`. Copies shipped as "Claude Usage" (0.0.1–0.0.3) only check this URL, so `release.sh` uploads the same appcast there too. Keep it alive. Sparkle installs the update at their old path (`Claude Usage.app`) and their sandbox data doesn't carry over (new bundle ID), so they sign in again.
 - Website: `site/` (plain pages for `https://clausage.ai`, linked from About), uploaded by `./deploy-site.sh`. Pre-rename release zips live in `release-legacy/` (gitignored).
+- Redirects (live since 2026-10-06): `http://` and `www.` go to `https://clausage.ai` in one 301, keeping the path and any `?ref=` tracking, so Google sees one copy of the site. They come from a `.htaccess` that exists **only on the server** (`/home/postfl/clausage.ai/.htaccess`, `/.well-known/` excluded for SSL renewal); the cPanel Force HTTPS toggle isn't available for this addon domain. The update feed, `Clausage.zip` and the legacy postfl.com feed are unaffected. `deploy-site.sh` uploads everything in `site/`, so never add a `site/.htaccess` unless it carries the same rules.
 - Upload host, FTP account, Keychain service names and key locations are in `.claude/release.md`, and `release.sh` reads them from `.claude/release.env`. Both are gitignored and live only on the release Mac: @.claude/release.md
 
 ## Data sources
@@ -59,5 +60,5 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 - Menubar-only app: any window needs `AppActivation.push()/pop()` or it can't be reached with Cmd-Tab.
 - The "Login Item Added" banner shows the file name (`Clausage.app`); macOS controls that text.
 - Dev and release builds share a bundle ID, so `./build.sh install` overwrites the notarized copy. (Idea: a separate "Clausage Dev" bundle ID.)
-- Auto-update checks are off by default (`SUEnableAutomaticChecks` false).
+- Auto-update checks are on by default: `SUEnableAutomaticChecks: true`, every 6 hours (`SUScheduledCheckInterval: 21600` in `project.yml`).
 - The widget and notifications only work from a properly signed app in `/Applications`.
