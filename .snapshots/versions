@@ -27,3 +27,9 @@ Bricolage type and Paper/Ink/Sand palette across both apps; plan badge, Limiting
 **Last version with the claude-usage identifiers**
 
 Clausage-branded Mac and iOS apps still built as `Claude Usage.app` with bundle IDs `com.postfl.claude-usage*`, App Group `group.com.postfl.claude-usage`, the `ClaudeUsage` Xcode project and the Sparkle feed at updates.postfl.com/claude-usage. About links point to clausage.ai; `site/` has plain placeholder pages. Limitations: the clausage.ai pages are not uploaded yet.
+
+## v5-pre-ventura
+
+**Multi-account Mac app, macOS 14 minimum**
+
+Clausage 0.0.5 in progress: Google sign-in popup fix, Free plan state on Mac and iPhone, Pro/Max copy on the site and README. The Mac app supports several claude.ai accounts, each in its own `WKWebsiteDataStore(forIdentifier:)`, which needs macOS 14. Limitations: no macOS 13 support.
