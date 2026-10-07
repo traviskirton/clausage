@@ -1,0 +1,2 @@
+# Unknown paths get the branded 404 page, with a real 404 status.
+ErrorDocument 404 /404.html

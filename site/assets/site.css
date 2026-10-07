@@ -344,3 +344,15 @@ html { scroll-behavior: smooth; }
   .kept div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .toc { position: static; }
 }
+
+/* 404. Spec: design/handoffs/design_handoff_clausage_404/README.md. */
+
+.not-found-page { min-height: 100vh; display: flex; flex-direction: column; }
+.not-found { flex: 1; padding-top: 64px; padding-bottom: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; text-align: center; }
+.tally-404 { width: min(100%, 300px);   /* the reference renders the 440px spec at about 300 */ display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.tally-404 svg { width: 100%; height: auto; display: block; }
+.tally-404-labels { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); font-weight: 600; font-size: 13px; line-height: 1; color: var(--muted); }
+.not-found-copy { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 620px; }
+.not-found-title { margin: 0; font: 700 clamp(40px, 6vw, 68px)/.95 var(--display); letter-spacing: -.045em; color: var(--ink); text-wrap: balance; }
+.not-found .page-lede { max-width: 30em; }
+.not-found .buttons { justify-content: center; }

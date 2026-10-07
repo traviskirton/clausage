@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found · Clausage</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#FFFCF6">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/bricolage-grotesque-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body class="not-found-page">
+<header class="wrap nav">
+<a class="logo" href="/"><img class="mark" src="/assets/mark.svg" width="30" height="30" alt=""><span class="wordmark">clausage</span></a>
+<nav>
+<a href="/#widgets">Widgets</a>
+<a href="/privacy/">Privacy</a>
+<a href="https://github.com/traviskirton/clausage">GitHub</a>
+<a class="pill" href="/#download">Download</a>
+</nav>
+</header>
+
+<main class="wrap not-found">
+<div class="tally-404">
+<svg viewBox="0 0 360 120" role="img" aria-label="404 as tally marks: four, none, four">
+<g stroke="#26231F" stroke-width="9" stroke-linecap="round" fill="none"><path d="M24 22 Q22 60 22 98"></path><path d="M44 21 Q44 60 43 99"></path><path d="M64 22 Q65 60 64 98"></path><path d="M84 21 Q84 60 85 99"></path></g>
+<g stroke="rgba(38,35,31,.18)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 9" fill="none"><path d="M152 22 L152 98"></path><path d="M172 22 L172 98"></path><path d="M192 22 L192 98"></path><path d="M212 22 L212 98"></path></g>
+<g stroke="#26231F" stroke-width="9" stroke-linecap="round" fill="none"><path d="M276 22 Q274 60 274 98"></path><path d="M296 21 Q296 60 295 99"></path><path d="M316 22 Q317 60 316 98"></path><path d="M336 21 Q336 60 337 99"></path></g>
+</svg>
+<div class="tally-404-labels mono" aria-hidden="true"><span>4</span><span>0</span><span>4</span></div>
+</div>
+
+<div class="not-found-copy">
+<h1 class="not-found-title">This link’s gone missing.</h1>
+<p class="page-lede">We counted every page on clausage.ai and came up one short. It may have moved, or it never existed.</p>
+</div>
+
+<div class="buttons">
+<a class="button button-dark" href="/">Back to the homepage</a>
+<a class="button button-light" id="report" href="mailto:counter@clausage.ai?subject=Broken%20link">Report a broken link</a>
+</div>
+</main>
+
+<footer class="wrap page-footer">
+<span class="fine">Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic.</span>
+<nav><a href="https://github.com/traviskirton/clausage">GitHub</a><a href="https://www.instagram.com/clau.sage/">Instagram</a><a href="/privacy/">Privacy</a><a href="/acknowledgements/">Acknowledgements</a><a href="mailto:counter@clausage.ai?subject=Feedback&amp;body=I%20like%20your%20clausage.">Send feedback</a></nav>
+</footer>
+<script>
+// The report says which link broke.
+document.getElementById("report").href += "&body=" + encodeURIComponent("Broken link: " + location.href);
+</script>
+</body>
+</html>
