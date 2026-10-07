@@ -5,5 +5,10 @@ RewriteCond %{HTTPS} off [OR]
 RewriteCond %{HTTP_HOST} ^www\. [NC]
 RewriteRule ^ https://clausage.ai%{REQUEST_URI} [L,R=301]
 
+# Short links (clausage.ai/ig, /r, /hn …) go straight to the home page with ?ref=<channel>, so the server logs can
+# attribute downloads (tools/downloads.py in clausage-mkt). Server-side, so there's no blank page in between.
+# 302 so a browser never caches a link we might change. The static /ig/ etc. pages stay as a fallback.
+RewriteRule ^(ig|th|x|bsky|tt|yt|r|hn|ph|gh|nl)/?$ /?ref=$1 [L,R=302]
+
 # Unknown paths get the branded 404 page, with a real 404 status.
 ErrorDocument 404 /404.html
