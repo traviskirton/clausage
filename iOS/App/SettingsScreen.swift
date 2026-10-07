@@ -3,10 +3,12 @@ import StoreKit
 import WidgetKit
 import UserNotifications
 
-/// Opened from the gear: brand header, then a native grouped list on the warm background with Ink switches.
+/// Opened from the gear: the current app icon and wordmark, then a native grouped list on the warm background with Ink
+/// switches (design handoff: iOS Settings v2).
 struct SettingsScreen: View {
     @ObservedObject var model: PhoneModel
     @Environment(\.requestReview) private var requestReview
+    @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
 
     @State private var near = PhonePrefs.notifyNear
@@ -16,20 +18,28 @@ struct SettingsScreen: View {
     @State private var paceTick = DisplayPrefs.showPaceTick
     @State private var background = PhonePrefs.backgroundRefresh
     @State private var notificationsDenied = false
+    @State private var icon = AppIcon.current
+    @State private var confirmSignOut = false
+    @State private var composingFeedback = false
 
     private var limits: [UsageLimit] { Forecast.ordered(model.snapshot?.limits ?? []) }
     private var free: Bool { SharedStore.isFree(model.snapshot) }
     private var shownCount: Int { DisplayPrefs.visible(model.snapshot?.limits ?? []).count }
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             Section {
-                VStack(spacing: 8) {
-                    AppIconView(size: 76)
-                    Wordmark(size: 30)
+            } header: {
+                VStack(spacing: 10) {
+                    Image(icon.preview).resizable().frame(width: 76, height: 76)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .accessibilityHidden(true)
+                    Wordmark(size: 26)
                 }
                 .frame(maxWidth: .infinity)
-                .listRowBackground(Color.clear)
+                .padding(.top, 4)
+                .textCase(nil)
             }
 
             if let sample = model.snapshot?.sample {
@@ -47,31 +57,36 @@ struct SettingsScreen: View {
                     Text("Made-up numbers that show how Clausage works, with nothing from a real account. Exit to sign in with yours.")
                 }
             } else {
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(model.who ?? "Signed in").font(.system(size: 17)).foregroundStyle(Color("Ink"))
-                        Text("Signed in through claude.ai").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(model.who ?? "Signed in").font(.system(size: 17)).foregroundStyle(Color("Ink"))
+                            Text("Signed in through claude.ai").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+                        }
+                        Spacer()
+                        if let plan = model.snapshot?.plan {
+                            Text(plan.badge).font(.system(size: 17)).foregroundStyle(Color("Ink2"))
+                        }
                     }
-                    Spacer()
-                    if let plan = model.snapshot?.plan {
-                        Text(plan.badge).font(.system(size: 17)).foregroundStyle(Color("Ink2"))
-                    }
-                }
-                Button("Sign Out", role: .destructive) {
-                    Task { await model.signOut(); dismiss() }
-                }
-                .foregroundStyle(Color("CriticalText"))
-            } header: { SectionTitle("Account") }
+                    .accessibilityElement(children: .combine)
+                    Button("Sign Out", role: .destructive) { confirmSignOut = true }
+                        .foregroundStyle(Color("CriticalText"))
+                        .confirmationDialog("Sign out of claude.ai?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                            Button("Sign Out", role: .destructive) { Task { await model.signOut(); dismiss() } }
+                        } message: {
+                            Text("Clausage stops counting until you sign in again.")
+                        }
+                } header: { SectionTitle("Account") }
             }
 
             Section {
                 // Free: nothing to alert on. Disabled (not just faded); saved choices are kept for later.
+                // Runout forecast is last, so the example below sits right under it.
                 Group {
-                    toggle("Near limit", "When a limit reaches 85%", $near) { PhonePrefs.notifyNear = $0 }
-                    toggle("Critical", "When a limit reaches 95%", $critical) { PhonePrefs.notifyCritical = $0 }
+                    toggle("Getting full", "When a limit reaches 85%", $near) { PhonePrefs.notifyNear = $0 }
+                    toggle("Last bites", "When a limit reaches 95%", $critical) { PhonePrefs.notifyCritical = $0 }
+                    toggle("Seconds are served", "When a limit resets", $resets) { PhonePrefs.notifyResets = $0 }
                     toggle("Runout forecast", "Only if you’ll run out before it resets", $runout) { PhonePrefs.notifyRunout = $0 }
-                    toggle("Limit resets", nil, $resets) { PhonePrefs.notifyResets = $0 }
                 }
                 .disabled(free)
                 .opacity(free ? 0.45 : 1)
@@ -96,11 +111,18 @@ struct SettingsScreen: View {
                     }
                 }
                 .disabled(limits.isEmpty)
-                toggle("Pace tick", "Marks how much of the window has passed", $paceTick) {
+                .listRowBackground(Color("Cell"))
+                toggle("Pace tick", "Shows if you’re ahead of an even pace", $paceTick) {
                     DisplayPrefs.showPaceTick = $0
                     WidgetCenter.shared.reloadAllTimelines()
                 }
             } header: { SectionTitle("Limits") }
+
+            Section {
+                IconPicker(selection: $icon)
+                    .listRowBackground(Color("Cell"))
+                    .id("icons")
+            } header: { SectionTitle("App icon") }
 
             Section {
                 toggle("Refresh in background", nil, $background) {
@@ -114,27 +136,38 @@ struct SettingsScreen: View {
             }
 
             Section {
-                NavigationLink("Send Feedback") { FeedbackScreen(model: model) }
-                NavigationLink("Privacy") { PrivacyScreen(model: model) }
-                Button { requestReview() } label: {
-                    HStack {
-                        Text("Rate Clausage").foregroundStyle(Color("Ink"))
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(.tertiary)
-                    }
-                }
-            }
+                OutsideRow(title: "Send Feedback") { sendFeedback() }
+                OutsideRow(title: "Rate Clausage") { rate() }
+                OutsideRow(title: "Privacy") { openURL(AppInfo.privacyURL) }
+                NavigationLink("Acknowledgements") { AcknowledgementsScreen() }
+                    .foregroundStyle(Color("Ink"))
+                    .listRowBackground(Color("Cell"))
+                    .id("support")
+            } header: { SectionTitle("Support") }
 
             Section {
+            } footer: {
                 VStack(spacing: 10) {
-                    Tally(size: 28, filled: 4, slash: 1)
-                    Text("Clausage \(AppInfo.version) · An independent app, not made by or affiliated with Anthropic.")
-                        .font(.system(size: 12)).foregroundStyle(Color("Ink3"))
-                        .multilineTextAlignment(.center)
+                    Tally(size: 36, filled: 4, slash: 1)
+                    Text("An independent app, not made by or affiliated with Anthropic.")
+                        .frame(maxWidth: 300)
+                    Text("Clausage \(AppInfo.version)").monospacedDigit()
                 }
+                .font(.system(size: 13)).foregroundStyle(Color("Ink3"))
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .listRowBackground(Color.clear)
+                .padding(.top, 16)
             }
+        }
+        #if DEBUG
+        .onAppear {
+            // `--demo-scroll icons|support`: screenshots of the lower groups.
+            let args = CommandLine.arguments
+            if let i = args.firstIndex(of: "--demo-scroll"), i + 1 < args.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { proxy.scrollTo(args[i + 1], anchor: .center) }
+            }
+        }
+        #endif
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
@@ -142,13 +175,19 @@ struct SettingsScreen: View {
         .tint(Color("Ink"))
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarRole(.editor)
+        .toolbarRole(.navigationStack)
         .task { await checkPermission() }
+        .sheet(isPresented: $composingFeedback) {
+            MailComposer(to: Feedback.address, subject: "Clausage feedback", body: feedbackBody, attachments: []) { _ in
+                composingFeedback = false
+            }
+            .ignoresSafeArea()
+        }
     }
 
     private func toggle(_ title: String, _ detail: String?, _ value: Binding<Bool>, _ apply: @escaping (Bool) -> Void) -> some View {
         Toggle(isOn: value) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.system(size: 17)).foregroundStyle(Color("Ink"))
                 if let detail { Text(detail).font(.system(size: 13)).foregroundStyle(Color("Ink2")) }
             }
@@ -160,8 +199,158 @@ struct SettingsScreen: View {
         .listRowBackground(Color("Cell"))
     }
 
+    /// Room to write, then the version and device so a bug report has its context.
+    private var feedbackBody: String {
+        let device = UIDevice.current
+        return "\n\n—\nClausage \(AppInfo.version), \(device.systemName) \(device.systemVersion)"
+    }
+
+    private func sendFeedback() {
+        if MailComposer.canSend { composingFeedback = true; return }
+        var c = URLComponents()
+        c.scheme = "mailto"
+        c.path = Feedback.address
+        c.queryItems = [URLQueryItem(name: "subject", value: "Clausage feedback"), URLQueryItem(name: "body", value: feedbackBody)]
+        if let url = c.url { openURL(url) }
+    }
+
+    /// The App Store's write-a-review page once the app has a store ID; until then, the in-app review prompt.
+    private func rate() {
+        if let url = AppInfo.writeReviewURL { openURL(url) } else { requestReview() }
+    }
+
     private func checkPermission() async {
         notificationsDenied = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .denied
+    }
+}
+
+/// A Support row that leaves the app: the title, then ↗ in the tertiary label color.
+private struct OutsideRow: View {
+    let title: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title).foregroundStyle(Color("Ink"))
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens outside Clausage")
+        .listRowBackground(Color("Cell"))
+    }
+}
+
+// MARK: App icon
+
+/// Fresh is the primary icon; Smoked and Grilled are alternates (`AppIcon-Smoked.icon`, `AppIcon-Grilled.icon`).
+enum AppIcon: String, CaseIterable, Identifiable {
+    case fresh, smoked, grilled
+    var id: String { rawValue }
+    var name: String { rawValue.capitalized }
+    /// `nil` is the primary icon.
+    var alternateName: String? { self == .fresh ? nil : "AppIcon-\(name)" }
+    /// Light render of the `.icon` (`tools/make-icon-previews.sh`); `UIImage(named:)` can't load app icons.
+    var preview: String { "IconPreview-\(name)" }
+
+    @MainActor static var current: AppIcon {
+        allCases.first { $0.alternateName == UIApplication.shared.alternateIconName } ?? .fresh
+    }
+}
+
+/// Three tiles in one standard row: 64pt icons, the selected one ringed in Ink.
+struct IconPicker: View {
+    @Binding var selection: AppIcon
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+            ForEach(AppIcon.allCases) { icon in
+                let selected = icon == selection
+                Button { choose(icon) } label: {
+                    VStack(spacing: 8) {
+                        Image(icon.preview).resizable().frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            .padding(5.5)       // 3pt gap + the 2.5pt ring
+                            .overlay(RoundedRectangle(cornerRadius: 20.5, style: .continuous)
+                                .strokeBorder(selected ? Color("Ink") : .clear, lineWidth: 2.5))
+                        Text(icon.name).font(.system(size: 13, weight: selected ? .semibold : .regular))
+                            .foregroundStyle(selected ? Color("Ink") : Color("Ink2"))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(icon.name) app icon")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
+    private func choose(_ icon: AppIcon) {
+        guard icon != selection, UIApplication.shared.supportsAlternateIcons else { return }
+        let previous = selection
+        selection = icon
+        UIApplication.shared.setAlternateIconName(icon.alternateName) { error in
+            if error != nil { Task { @MainActor in selection = previous } }
+        }
+    }
+}
+
+// MARK: Acknowledgements
+
+/// Open-source work bundled in the app. On iPhone that's the typeface.
+struct AcknowledgementsScreen: View {
+    var body: some View {
+        List {
+            Section {
+                NavigationLink {
+                    LicenseScreen(title: "Bricolage Grotesque", text: Self.ofl)
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Bricolage Grotesque").font(.system(size: 17)).foregroundStyle(Color("Ink"))
+                        Text("By Mathieu Triay · SIL Open Font License 1.1").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+                    }
+                }
+                .listRowBackground(Color("Cell"))
+            } header: {
+                SectionTitle("Type")
+            } footer: {
+                Text("The clausage wordmark, every headline and every percentage.")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color("Grouped").ignoresSafeArea())
+        .tint(Color("Ink"))
+        .navigationTitle("Acknowledgements")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarRole(.editor)
+    }
+
+    /// The license file bundled with the font.
+    static var ofl: String {
+        Bundle.main.url(forResource: "BricolageGrotesque-OFL", withExtension: "txt")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? "SIL Open Font License 1.1, https://openfontlicense.org"
+    }
+}
+
+struct LicenseScreen: View {
+    let title: String
+    let text: String
+    var body: some View {
+        ScrollView {
+            Text(text).font(.system(size: 13, design: .monospaced)).foregroundStyle(Color("Ink"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .textSelection(.enabled)
+        }
+        .background(Color("Grouped").ignoresSafeArea())
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarRole(.editor)
     }
 }
 
@@ -210,6 +399,13 @@ struct SectionTitle: View {
 }
 
 enum AppInfo {
+    static let privacyURL = URL(string: "https://clausage.ai/privacy/")!
+    /// The App Store's numeric Apple ID for the iOS app (App Store Connect → App Information). nil until it's known.
+    static let appStoreID: String? = nil
+    static var writeReviewURL: URL? {
+        appStoreID.flatMap { URL(string: "https://apps.apple.com/app/id\($0)?action=write-review") }
+    }
+
     /// "0.0.4 (3)".
     static var version: String {
         let i = Bundle.main.infoDictionary

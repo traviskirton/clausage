@@ -89,12 +89,20 @@ targets:
   ClausageiOS:
     type: application
     platform: iOS
-    sources: [iOS/App, iOS/Shared, Shared, SharedUI]      # app icon: iOS/App/clausage-tally.icon
+    # App icons: iOS/App/clausage-fresh.icon (primary), AppIcon-Smoked.icon and AppIcon-Grilled.icon (alternates, picked
+    # in Settings). Picker previews in iOS/App/IconPreviews.xcassets come from tools/make-icon-previews.sh.
+    sources:
+      - path: iOS/App
+        excludes: [clausage-tally.icon]
+      - iOS/Shared
+      - Shared
+      - SharedUI
     settings:
       base:
         PRODUCT_NAME: Clausage
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios
-        ASSETCATALOG_COMPILER_APPICON_NAME: clausage-tally
+        ASSETCATALOG_COMPILER_APPICON_NAME: clausage-fresh
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: AppIcon-Smoked AppIcon-Grilled
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
