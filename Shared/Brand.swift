@@ -52,11 +52,17 @@ struct BrandMark: View {
                 p.closeSubpath()
                 return p
             }
-            for (i, r) in LogoRays.rays.enumerated() where i < 10 { ctx.fill(path(r), with: .color(ink)) }
             let accent = LogoRays.rays[10...].map(path)
-            for p in accent {
-                ctx.stroke(p, with: .color(ember.opacity(0.2)), style: StrokeStyle(lineWidth: 2.5 * s, lineJoin: .round))
+            // Halo first, as one flattened layer: per-ray translucent strokes stack where the two rays overlap,
+            // and drawn over the ink they tint the center brown.
+            ctx.drawLayer { layer in
+                layer.opacity = 0.2
+                for p in accent {
+                    layer.stroke(p, with: .color(ember), style: StrokeStyle(lineWidth: 2.5 * s, lineJoin: .round))
+                    layer.fill(p, with: .color(ember))
+                }
             }
+            for (i, r) in LogoRays.rays.enumerated() where i < 10 { ctx.fill(path(r), with: .color(ink)) }
             for p in accent { ctx.fill(p, with: .color(ember)) }
         }
         .frame(width: size, height: size)
