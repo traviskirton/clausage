@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude usage trackers, compared · Clausage</title>
+<meta name="description" content="An honest look at the ways to track your Claude plan limits: claude.ai’s own usage page, Claude Code’s /usage, CodexBar, ccusage, claude-hud, Mac menu bar apps and browser extensions.">
+<meta name="theme-color" content="#FFFCF6">
+<link rel="canonical" href="https://clausage.ai/compare/">
+<meta property="og:site_name" content="Clausage">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Claude usage trackers, compared">
+<meta property="og:description" content="Built-in pages, CLIs, menu bar apps and extensions: which one fits how you use Claude.">
+<meta property="og:url" content="https://clausage.ai/compare/">
+<meta property="og:image" content="https://clausage.ai/assets/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
+<link rel="preload" href="/assets/bricolage-grotesque-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {"@type": "Article",
+   "headline": "Claude usage trackers, compared",
+   "description": "The ways to track Claude plan limits, and which one fits how you use Claude.",
+   "datePublished": "2026-10-07",
+   "dateModified": "2026-10-07",
+   "mainEntityOfPage": "https://clausage.ai/compare/",
+   "publisher": {"@type": "Organization", "name": "Clausage", "url": "https://clausage.ai/"}},
+  {"@type": "BreadcrumbList",
+   "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Clausage", "item": "https://clausage.ai/"},
+    {"@type": "ListItem", "position": 2, "name": "Compare", "item": "https://clausage.ai/compare/"}]}
+ ]
+}
+</script>
+</head>
+<body>
+<header class="wrap nav">
+<a class="logo" href="/"><img class="mark" src="/assets/mark.svg" width="30" height="30" alt=""><span class="wordmark">clausage</span></a>
+<nav>
+<a href="/#widgets">Widgets</a>
+<a href="/privacy/">Privacy</a>
+<a href="https://github.com/traviskirton/clausage">GitHub</a>
+<a class="pill" href="/#download">Download</a>
+</nav>
+</header>
+
+<main>
+<section class="wrap page-head">
+<span class="chip">Compare</span>
+<h1 class="page-title"><span class="kicker">Claude usage tracker alternatives</span>Which tracker fits you?</h1>
+<p class="page-lede">There are dozens of ways to watch your Claude limits, and several are good. The right one depends on where you already look: the Claude settings page, your terminal, your menu bar or your browser. Here’s an honest rundown, including when to pick something other than Clausage.</p>
+<span class="page-meta">Checked October 7, 2026 · We make Clausage, so weigh our view accordingly</span>
+</section>
+
+<section class="band">
+<div class="wrap glance">
+<div class="glance-top">
+<h2 class="h3">At a glance</h2>
+<div class="pills"><span>All free</span><span>Ordered by where you’d look</span></div>
+</div>
+<div class="glance-table compare-table">
+<div class="glance-row head"><span>Option</span><span>What it is</span><span>Pick it if</span></div>
+<div class="glance-row"><span>claude.ai Settings → Usage</span><span>Anthropic’s own page: session and weekly bars, reset times, usage credits.</span><span class="leaves">You check now and then and don’t want to install anything.</span></div>
+<div class="glance-row"><span>Claude Code <code>/usage</code></span><span>Built into Claude Code: plan usage plus a breakdown of what counts against it (skills, subagents, MCP servers, long context, cache misses).</span><span class="leaves">You live in Claude Code and want answers inside the terminal.</span></div>
+<div class="glance-row"><span><a href="https://github.com/jarrodwatts/claude-hud">claude-hud</a></span><span>A Claude Code status line plugin showing usage and reset under the input.</span><span class="leaves">You want it in Claude Code’s status line, with no new window.</span></div>
+<div class="glance-row"><span><a href="https://github.com/ryoppippi/ccusage">ccusage</a></span><span>A CLI that reports tokens and cost from Claude Code’s local logs. Runs with <code>npx</code>.</span><span class="leaves">You want token and cost reports, not plan limits.</span></div>
+<div class="glance-row"><span><a href="https://github.com/steipete/CodexBar">CodexBar</a></span><span>A Mac menu bar app covering many providers: Codex, Claude, Cursor, Gemini, Copilot and more.</span><span class="leaves">You use several AI coding tools and want them in one place.</span></div>
+<div class="glance-row"><span><a href="https://github.com/hamed-elfayome/Claude-Usage-Tracker">Claude Usage Tracker</a></span><span>A Mac menu bar app with multiple profiles, pace markers, history charts and Codex support.</span><span class="leaves">You want lots of settings and several accounts.</span></div>
+<div class="glance-row"><span><a href="https://github.com/f-is-h/Usage4Claude">Usage4Claude</a></span><span>A Mac menu bar app with a pace chart and threshold and reset notifications.</span><span class="leaves">You like seeing pace as a chart.</span></div>
+<div class="glance-row"><span><a href="https://github.com/lugia19/Claude-Usage-Extension">Claude Usage Tracker extension</a></span><span>A Chrome and Firefox extension that estimates usage per chat on claude.ai.</span><span class="leaves">You use Claude in the browser, on any computer.</span></div>
+<div class="glance-row"><span>Clausage</span><span>A Mac menu bar app for any Claude plan: one bar per limit with a pace tick, a clock time for when you’ll run out, quiet until 85%, desktop widgets, an optional Claude Code breakdown, no analytics. Open source.</span><span class="leaves">You want to glance, not check, and you use Claude for more than code.</span></div>
+</div>
+</div>
+</section>
+
+<section class="wrap policy">
+<aside class="toc">
+<span>On this page</span>
+<nav>
+<a href="#builtin">Do you need a tracker at all?</a>
+<a href="#terminal">If you live in the terminal</a>
+<a href="#menubar">If you want it in the menu bar</a>
+<a href="#clausage">Where Clausage fits</a>
+<a href="#name">The other Clausage</a>
+</nav>
+</aside>
+
+<article class="article">
+
+<div id="builtin" class="clause">
+<h2 class="h3">Do you need a tracker at all?</h2>
+<p class="prose">Maybe not. Settings → Usage on claude.ai shows every limit and when it resets, and it’s free and always right. If you hit a limit once a month, that page is enough.</p>
+<p class="prose">A tracker earns its place when you hit limits often, or start big tasks without knowing whether there’s room. The value is seeing it without going to look.</p>
+</div>
+
+<div id="terminal" class="clause">
+<h2 class="h3">If you live in the terminal</h2>
+<p class="prose">Start with what’s built in: Claude Code’s <code>/usage</code> shows your plan usage and what’s driving it. claude-hud puts usage in the status line, so it’s always under your cursor. ccusage is the long-standing choice for token and cost reports. All three stay inside Claude Code, which is the point if that’s where you work.</p>
+</div>
+
+<div id="menubar" class="clause">
+<h2 class="h3">If you want it in the menu bar</h2>
+<p class="prose">Menu bar apps show your limits whether or not Claude is open, which matters if you also use Claude in the browser or desktop app. CodexBar is the pick if you use Codex, Cursor or other tools too: one app for all of them, with a large community. Claude Usage Tracker has the most settings of the Claude-only apps. Usage4Claude draws pace as a chart.</p>
+</div>
+
+<div id="clausage" class="clause">
+<h2 class="h3">Where Clausage fits</h2>
+<ul class="roomy">
+<li><b>Quiet by default.</b> Under 85% it’s just a bar. Past that it gives a clock time, like <b>Out ~Mon 9:40 PM</b>, instead of a percentage to work out.</li>
+<li><b>Pace on every bar.</b> A tick shows where an even pace would put you now, so “am I OK for the week?” is one glance. (<a href="/pace/">How pace works</a>)</li>
+<li><b>Any Claude plan, Claude Code optional.</b> It reads the same usage page you’d check yourself, so it works for chat and Cowork too.</li>
+<li><b>Private.</b> No analytics and no server. The optional Claude Code scan keeps totals only, never prompts or code. Open source, so you can check.</li>
+<li><b>Claude only.</b> If you want other providers in the same place, CodexBar is the better fit.</li>
+</ul>
+<div class="buttons">
+<a class="button button-dark on-mac" href="/updates/Clausage.zip" aria-label="Download Clausage for Mac"><span class="icon-laptop" aria-hidden="true"></span>Download for Mac</a>
+<a class="button button-dark on-phone send-to-mac" href="mailto:?subject=Clausage%20for%20Mac&amp;body=https%3A%2F%2Fclausage.ai%2F" aria-label="Send the Clausage link to your Mac"><span class="icon-laptop" aria-hidden="true"></span>Send it to my Mac</a>
+<a class="button button-light" href="/which-limit/">Which limit locked you out?</a>
+</div>
+</div>
+
+<div id="name" class="clause">
+<h2 class="h3">The other Clausage</h2>
+<p class="prose">There’s another Mac app called Clausage, made by Schizm and sold as a paid app. It’s a different app with a different maker, and there’s no connection between the two. This one is free, open source and lives at clausage.ai.</p>
+</div>
+
+</article>
+</section>
+</main>
+
+<footer class="wrap page-footer">
+<span class="fine">Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic. Other products named here belong to their makers; details are as described on their own pages on the date above.</span>
+<nav><a href="https://github.com/traviskirton/clausage">GitHub</a><a href="https://www.instagram.com/clau.sage/">Instagram</a><a href="/privacy/">Privacy</a><a href="/acknowledgements/">Acknowledgements</a><a href="mailto:counter@clausage.ai?subject=Feedback&amp;body=I%20like%20your%20clausage.">Send feedback</a></nav>
+</footer>
+<script>
+(function () {
+  var ref = new URLSearchParams(location.search).get('ref');
+  var url = 'https://clausage.ai/?ref=' + encodeURIComponent((ref ? ref + '-' : 'compare-') + 'send');
+  document.querySelectorAll('.send-to-mac').forEach(function (a) {
+    a.href = 'mailto:?subject=' + encodeURIComponent('Clausage for Mac') + '&body=' + encodeURIComponent(url);
+    if (!navigator.share) return;
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      navigator.share({ title: 'Clausage for Mac', text: 'Your Claude limits in the Mac menu bar', url: url }).catch(function () {});
+    });
+  });
+})();
+</script>
+</body>
+</html>

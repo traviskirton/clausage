@@ -381,3 +381,5 @@ html { scroll-behavior: smooth; }
 .pace-grid .forecast-row .meter-top .num { font-size: 22px; }
 .clause .buttons { margin-top: 8px; }
 .guide-link { font: 600 15px/1.3 var(--sans); }
+.compare-table .glance-row code { font: 500 13px/1 ui-monospace, 'SF Mono', Menlo, monospace; color: var(--ink); background: #F2E7D3; padding: 2px 5px; border-radius: 5px; }
+.compare-table .glance-row:last-child span:first-child { color: var(--link); }
