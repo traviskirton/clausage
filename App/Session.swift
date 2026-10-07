@@ -10,6 +10,8 @@ final class ClaudeSession: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindo
     let accountID: UUID
     private var signInWindow: NSWindow?
     private var signInView: WKWebView?
+    private var popupWindow: NSWindow?
+    private var popupView: WKWebView?
     private var pollTimer: Timer?
     private var onSignedIn: ((Bool) -> Void)?
 
@@ -75,6 +77,7 @@ final class ClaudeSession: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindo
 
     private func finishSignIn(_ ok: Bool) {
         pollTimer?.invalidate(); pollTimer = nil
+        closePopup()
         let cb = onSignedIn; onSignedIn = nil
         signInWindow?.delegate = nil
         signInWindow?.close()
@@ -88,11 +91,41 @@ final class ClaudeSession: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindo
         finishSignIn(false)
     }
 
-    // Google/SSO popups: load them in the same view instead of opening a new window.
+    // Google/SSO popups get a real child window built from WebKit's configuration, so the popup keeps `window.opener`,
+    // can post the sign-in result back to claude.ai and close itself. Loading it in the same view strands it on a blank page.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        webView.load(navigationAction.request)
-        return nil
+        closePopup()
+        let v = WKWebView(frame: .zero, configuration: configuration)
+        v.customUserAgent = Self.safariUA
+        v.uiDelegate = self
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
+                         styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        w.title = "Sign in"
+        w.contentView = v
+        w.isReleasedWhenClosed = false
+        if let parent = signInWindow {
+            let p = parent.frame
+            w.setFrameOrigin(NSPoint(x: p.midX - w.frame.width / 2, y: p.midY - w.frame.height / 2))
+            parent.addChildWindow(w, ordered: .above)
+        } else {
+            w.center()
+        }
+        w.makeKeyAndOrderFront(nil)
+        popupView = v; popupWindow = w
+        return v
+    }
+
+    /// The popup called `window.close()` (Google does this once it has handed the result back).
+    func webViewDidClose(_ webView: WKWebView) {
+        if webView === popupView { closePopup() }
+    }
+
+    private func closePopup() {
+        guard let w = popupWindow else { return }
+        w.parent?.removeChildWindow(w)
+        w.close()
+        popupWindow = nil; popupView = nil
     }
 
     /// Forgets this account's cookies and web data.

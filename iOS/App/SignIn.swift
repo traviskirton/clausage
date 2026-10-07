@@ -13,6 +13,8 @@ struct ClaudeWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = Self.store
+        // Look like Mobile Safari: Google refuses to sign in inside embedded web views that don't say "Safari".
+        config.applicationNameForUserAgent = "Version/18.0 Mobile/15E148 Safari/604.1"
         let view = WKWebView(frame: .zero, configuration: config)
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
@@ -44,11 +46,25 @@ struct ClaudeWebView: UIViewRepresentable {
         func cookiesDidChange(in cookieStore: WKHTTPCookieStore) { Task { @MainActor in await tryComplete() } }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { Task { @MainActor in await tryComplete() } }
 
-        // Google / SSO popups: load them in the same view instead of opening a new one.
+        // Google / SSO popups: a real popup view (from WebKit's configuration) laid over the sign-in page, so it keeps
+        // `window.opener`, hands the result back to claude.ai and closes itself. Loading it in place strands it on a blank page.
+        private var popup: WKWebView?
+
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-            webView.load(navigationAction.request)
-            return nil
+            popup?.removeFromSuperview()
+            let v = WKWebView(frame: webView.bounds, configuration: configuration)
+            v.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            v.uiDelegate = self
+            webView.addSubview(v)
+            popup = v
+            return v
+        }
+
+        func webViewDidClose(_ webView: WKWebView) {
+            guard webView === popup else { return }
+            webView.removeFromSuperview()
+            popup = nil
         }
 
         @MainActor private func tryComplete() async {
