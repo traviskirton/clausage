@@ -51,12 +51,12 @@ enum UsageSize {
 
     var label: CGFloat { switch self { case .small: 12; case .medium: 13; case .large: 15; case .screen: 17 } }
     var labelWeight: Font.Weight { self == .small ? .medium : .semibold }
-    /// Bricolage %: the label size + 2 in widgets, 18 on the screen.
-    var percent: CGFloat { switch self { case .small: 14; case .medium: 15; case .large: 17; case .screen: 18 } }
+    /// Bricolage %: the label size + 2 in widgets, 22 on the screen.
+    var percent: CGFloat { switch self { case .small: 14; case .medium: 15; case .large: 17; case .screen: 22 } }
     /// 8pt on the screen, 6pt in widgets, 5pt in the small widget.
     var barHeight: CGFloat { switch self { case .small: 5; case .medium, .large: 6; case .screen: 8 } }
     var forecast: CGFloat { switch self { case .small: 11; case .medium, .large: 12; case .screen: 13 } }
-    var innerGap: CGFloat { switch self { case .small: 4; case .medium: 5; case .large: 6; case .screen: 8 } }
+    var innerGap: CGFloat { switch self { case .small: 4; case .medium: 5; case .large: 6; case .screen: 7 } }
     var rowGap: CGFloat { switch self { case .small: 8; case .medium: 9; case .large: 12; case .screen: 26 } }
     /// Large and the screen show a reset line (with the forecast on its right).
     var showsResetLine: Bool { self == .large || self == .screen }

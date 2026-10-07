@@ -21,7 +21,7 @@ enum SampleData {
         var testOnly = false
     }
 
-    static let all: [Scenario] = [maxMixed, proCalm, maxCritical, team, enterprise, free, legacyKeys]
+    static let all: [Scenario] = [maxMixed, proCalm, maxCritical, team, enterprise, free, legacyKeys, maxIdle]
     static var pickable: [Scenario] { all.filter { !$0.testOnly } }
     static func scenario(_ id: String?) -> Scenario? { all.first { $0.id == id } }
 
@@ -122,6 +122,26 @@ enum SampleData {
          "seven_day":{"utilization":47.0,"resets_at":"{{T+4d}}"},
          "seven_day_opus":{"utilization":20.0,"resets_at":"{{T+4d}}"}}
         """,
+        testOnly: true)
+
+    /// The iOS main-screen handoff: early in the week, ahead of pace, Fable untouched (the idle row).
+    static let maxIdle = Scenario(
+        id: "max-idle", name: "Max · Fable untouched",
+        org: #"{"uuid":"sample-max","name":"Sample's Organization","rate_limit_tier":"default_claude_max_5x","capabilities":["chat","claude_max"],"raven_type":null}"#,
+        usage: """
+        {"five_hour":{"utilization":25.0,"resets_at":"{{T+2h27m}}"},
+         "seven_day":{"utilization":31.0,"resets_at":"{{T+5d15h}}"},
+         "limits":[
+           {"kind":"session","group":"session","percent":25,"severity":"normal","resets_at":"{{T+2h27m}}","scope":null,"is_active":false},
+           {"kind":"weekly_all","group":"weekly","percent":31,"severity":"normal","resets_at":"{{T+5d15h}}","scope":null,"is_active":true},
+           {"kind":"weekly_scoped","group":"weekly","percent":0,"severity":"normal","resets_at":"{{T+5d15h}}","scope":{"model":{"id":null,"display_name":"Fable"},"surface":null},"is_active":false}],
+         "spend":{"used":{"amount_minor":0,"currency":"CAD","exponent":2},"enabled":false,"can_toggle":true},
+         "seven_day_breakdown":{"as_of":"{{T-10m}}","window_started_at":"{{T-1d9h}}",
+           "rows":[{"key":"claude_code","display_name":"Claude Code","percent":76},{"key":"other","display_name":"Other","percent":15},
+                   {"key":"cowork","display_name":"Cowork","percent":8},{"key":"chat","display_name":"Chat","percent":1}]}}
+        """,
+        credits: UsageCredits(enabled: false, spentMinor: 0, limitMinor: 7000, balanceMinor: 0, currency: "CAD",
+                              autoReload: false, fetched: Date()),
         testOnly: true)
 
     // MARK: Loading

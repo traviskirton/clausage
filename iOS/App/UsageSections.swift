@@ -18,36 +18,44 @@ extension View {
     func brandCard(padding: CGFloat = 16) -> some View { modifier(BrandCard(padding: padding)) }
 }
 
-/// Section header: Bricolage 22, tracked −3%, with an optional right-side note in Ink 2.
+/// Section title, outside its card: Bricolage 22, tracked −3%, 12pt above the card.
 struct SectionHeader: View {
     let title: String
-    var note: String? = nil
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.clausageDisplay(22)).brandTracking(-0.03, size: 22).foregroundStyle(Color("Ink"))
-            Spacer(minLength: 8)
-            if let note { Text(note).font(.system(size: 13)).foregroundStyle(Color("Ink2")) }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+        Text(title).font(.clausageDisplay(22)).brandTracking(-0.03, size: 22).foregroundStyle(Color("Ink"))
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
-// MARK: Header
+/// A titled section: the header, then its card 12pt below.
+struct BrandSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: title)
+            content
+        }
+    }
+}
 
-/// Mark, "Usage" in Bricolage, and the plan badge (with the org name under it on Team and Enterprise).
-struct UsageHeader: View {
+// MARK: Title row
+
+/// The large title: the tally at 44pt, "Clausage" in Bricolage 38, and the plan chip on the trailing edge
+/// (with the org name under it on Team and Enterprise).
+struct TitleRow: View {
     let plan: Plan?
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            BrandMark(size: 34)
-            Text("Usage").font(.clausageDisplay(38)).brandTracking(-0.035, size: 38).foregroundStyle(Color("Ink"))
+        HStack(alignment: .center, spacing: 8) {
+            Tally(size: 44, filled: 4, slash: 1)
+            Text("Clausage").font(.clausageDisplay(38)).brandTracking(-0.035, size: 38).foregroundStyle(Color("Ink"))
+                .lineLimit(1).minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             if let plan {
                 VStack(alignment: .trailing, spacing: 3) {
-                    BrandChip(text: plan.badge, size: 12)
+                    PlanChip(text: plan.badge)
                     if let org = plan.orgName {
                         Text(org).font(.system(size: 11)).foregroundStyle(Color("Ink2")).lineLimit(1)
                     }
@@ -56,6 +64,19 @@ struct UsageHeader: View {
                 .accessibilityLabel("Plan: \(plan.badge)" + (plan.orgName.map { ", \($0)" } ?? ""))
             }
         }
+    }
+}
+
+/// Ink capsule, Paper text in Bricolage 15.
+struct PlanChip: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.clausageDisplay(15)).brandTracking(-0.01, size: 15)
+            .foregroundStyle(Color("Paper"))
+            .padding(.top, 7).padding(.bottom, 8).padding(.horizontal, 12)
+            .background(Color("Ink"), in: Capsule())
+            .lineLimit(1).fixedSize()
     }
 }
 
@@ -84,24 +105,27 @@ struct RunningTotalCard: View {
     let now: Date
 
     var body: some View {
-        Group {
-            if let chart {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("All models · this week").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color("Ink"))
-                        Spacer(minLength: 8)
-                        Text(chart.rightLabel).font(.system(size: 13)).foregroundStyle(Color("Ink2"))
-                    }
-                    RunningTotalChart(chart: chart, level: level, now: now)
-                        .frame(height: 150)
-                    Text(chart.caption).font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+        BrandSection(title: "All models this week") {
+            Group {
+                if let chart {
+                    VStack(alignment: .leading, spacing: 14) {
+                        RunningTotalChart(chart: chart, level: level, now: now)
+                            .frame(height: 148)
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let headline = chart.headline {
+                                Text(headline).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color("Ink"))
+                            }
+                            Text(chart.caption).font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+                        }
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityElement(children: .combine)
+                    }
+                } else {
+                    NotEnoughYet()
                 }
-            } else {
-                NotEnoughYet()
             }
+            .brandCard()
         }
-        .brandCard()
     }
 }
 
@@ -112,20 +136,20 @@ struct ProductCard: View {
 
     var body: some View {
         if let top = breakdown.rows.first {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "This week by product", note: "All models")
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(Int(top.percent.rounded()))%")
-                        .font(.clausagePercent(48)).brandTracking(-0.05, size: 48).foregroundStyle(Color("Ink"))
-                    Text("came from \(top.name)").font(.system(size: 15, weight: .medium)).foregroundStyle(Color("Ink"))
+            BrandSection(title: "This week by product") {
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(Int(top.percent.rounded()))%")
+                            .font(.clausagePercent(48)).brandTracking(-0.05, size: 48).foregroundStyle(Color("Ink"))
+                        Text("came from \(top.name)").font(.system(size: 15, weight: .medium)).foregroundStyle(Color("Ink"))
+                    }
                     if breakdown.rows.count > 1 {
-                        Rectangle().fill(Color("Hairline")).frame(height: 1).padding(.vertical, 10)
+                        Rectangle().fill(Color("Sand")).frame(height: 0.5)
                         HStack(spacing: 0) {
                             ForEach(Array(breakdown.rows.dropFirst().enumerated()), id: \.element.id) { i, row in
-                                if i > 0 { Spacer(minLength: 8) }
-                                (Text(row.name + " ").foregroundStyle(Color("Ink2"))
+                                if i > 0 { Spacer(minLength: 10) }
+                                (Text(row.name + " ").font(.system(size: 14)).foregroundStyle(Color("Ink2"))
                                  + Text("\(Int(row.percent.rounded()))%").font(.clausagePercent(15)).foregroundStyle(Color("Ink")))
-                                    .font(.system(size: 15))
                                     .lineLimit(1)
                             }
                         }
@@ -146,11 +170,10 @@ struct CreditsCard: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Usage credits")
+        BrandSection(title: "Usage credits") {
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(credits.stateText).font(.system(size: 17, weight: .medium)).foregroundStyle(Color("Ink"))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(credits.stateText).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color("Ink"))
                     if !credits.detailText.isEmpty {
                         Text(credits.detailText).font(.system(size: 13)).foregroundStyle(Color("Ink2"))
                     }

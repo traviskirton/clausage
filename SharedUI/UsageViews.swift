@@ -29,6 +29,8 @@ struct UsageBar: View {
     var stale = false
     /// The color behind the bar, used for the cut-out ring around the pace tick.
     var ring: Color = UsageColor.surface
+    /// The iPhone screen drops the tick at 100%: the red bar already says it's full.
+    var tickWhenFull = true
 
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -49,7 +51,9 @@ struct UsageBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(track).frame(height: height)
                 fill(width: fillW)
-                if DisplayPrefs.showPaceTick, let e = Forecast.elapsed(limit, now: now) { tick.offset(x: w * e - 1) }
+                if DisplayPrefs.showPaceTick, tickWhenFull || limit.percent < 100, let e = Forecast.elapsed(limit, now: now) {
+                    tick.offset(x: w * e - 1)
+                }
             }
         }
         .frame(height: height)
@@ -87,8 +91,8 @@ struct UsageRow: View {
     let now: Date
     let size: UsageSize
     var stale = false
-    /// The Usage screen marks the binding limit with a "Limiting now" chip.
-    var showActiveChip = false
+    /// The Usage screen puts the runout chip ("Out ~Sat 3 PM") on the `is_active` row, when the forecast runs out before the reset.
+    var showRunoutChip = false
     var ring: Color = UsageColor.surface
 
     @Environment(\.usageStyle) private var style
@@ -98,42 +102,69 @@ struct UsageRow: View {
     private var name: String { size == .small ? Forecast.shortName(limit) : Forecast.fullName(limit) }
     private var forecast: String? { Forecast.forecastText(limit, now: now) }
     private var forecastColor: Color { style == .accented ? tint : UsageColor.text(level) }
+    private var runout: String? { showRunoutChip ? Forecast.runoutChip(limit, now: now) : nil }
+    /// The screen's quiet row for a limit that hasn't been touched: no bar, smaller type. The full row comes back at 1%.
+    private var idle: Bool { size == .screen && limit.percent.rounded() < 1 }
 
     var body: some View {
+        Group {
+            if idle { idleRow } else { fullRow }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var fullRow: some View {
         VStack(alignment: .leading, spacing: size.innerGap) {
             HStack(alignment: .center, spacing: 8) {
                 Text(name).font(.system(size: size.label, weight: size.labelWeight))
                     .foregroundStyle(UsageColor.ink(style))
-                if showActiveChip, limit.isActive == true {
-                    BrandChip(text: "Limiting now", size: 11)
-                }
+                if let runout { RunoutChip(text: runout) }
                 Spacer(minLength: 6)
                 Text("\(Int(limit.percent.rounded()))%")
                     .font(.clausagePercent(size.percent))      // never colored
+                    .brandTracking(size == .screen ? -0.03 : 0, size: size.percent)
                     .foregroundStyle(UsageColor.ink(style))
                     .opacity(stale ? 0.5 : 1)
             }
             .frame(height: size.percent)      // a fixed line box, so tight widgets don't squeeze some rows' text
             .lineLimit(1).minimumScaleFactor(0.8)
 
-            UsageBar(limit: limit, now: now, height: size.barHeight, stale: stale, ring: ring)
+            UsageBar(limit: limit, now: now, height: size.barHeight, stale: stale, ring: ring, tickWhenFull: size != .screen)
 
             detail
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
+    }
+
+    /// "Fable 0%" in Ink 2, then "Still in the package · Resets Tue".
+    private var idleRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(name).font(.system(size: 15, weight: .medium))
+                Spacer(minLength: 6)
+                Text("0%").font(.clausagePercent(17)).brandTracking(-0.03, size: 17)
+            }
+            .foregroundStyle(UsageColor.ink2(style))
+            Text(Forecast.idleText(limit)).font(.system(size: 12)).foregroundStyle(UsageColor.ink3(style))
+        }
+        .lineLimit(1).minimumScaleFactor(0.8)
+        .opacity(stale ? 0.5 : 1)
     }
 
     @ViewBuilder private var detail: some View {
-        if size.showsResetLine {
-            let font: CGFloat = size == .screen ? 13 : 12
+        if size == .screen {
+            // The forecast lives in the runout chip on the screen; this line is only the reset.
+            if let r = Forecast.screenResetText(limit) {
+                Text(r).font(.system(size: 13)).foregroundStyle(UsageColor.ink2(style)).lineLimit(1)
+            }
+        } else if size.showsResetLine {
             HStack {
                 if let r = Forecast.resetText(limit) {
-                    Text(r).font(.system(size: font)).foregroundStyle(UsageColor.ink2(style))
+                    Text(r).font(.system(size: 12)).foregroundStyle(UsageColor.ink2(style))
                 }
                 Spacer(minLength: 6)
                 if let f = forecast {
-                    Text(f).font(.system(size: font, weight: .semibold)).foregroundStyle(forecastColor).widgetAccentable(style == .accented)
+                    Text(f).font(.system(size: 12, weight: .semibold)).foregroundStyle(forecastColor).widgetAccentable(style == .accented)
                 }
             }
             .lineLimit(1).minimumScaleFactor(0.8)
@@ -146,7 +177,14 @@ struct UsageRow: View {
 
     private var accessibilityText: String {
         var s = "\(Forecast.fullName(limit)), \(Int(limit.percent.rounded())) percent used"
-        if showActiveChip, limit.isActive == true { s += ", limiting now" }
+        if idle { return s + ". " + Forecast.idleText(limit) }
+        if size == .screen {
+            if let hit = runout != nil ? Forecast.hitDate(limit, now: now) : nil {
+                s += ", runs out around \(Forecast.runoutTime(hit, window: limit.windowLength))"
+            }
+            if let r = Forecast.screenResetText(limit) { s += ", " + r.lowercased() }
+            return s
+        }
         if level != .normal, let hit = Forecast.hitDate(limit, now: now) {
             let when = limit.windowLength > 86_400
                 ? hit.formatted(.dateTime.weekday(.wide).hour().minute())
@@ -156,6 +194,20 @@ struct UsageRow: View {
             s += ", resets \(Forecast.timeText(r, window: limit.windowLength))"
         }
         return s
+    }
+}
+
+/// "Out ~Sat 3 PM": the only chip on the Usage screen, on one row at most.
+struct RunoutChip: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Color("RunoutText"))
+            .padding(.vertical, 4).padding(.horizontal, 7)
+            .background(Color("RunoutChip"), in: Capsule())
+            .lineLimit(1)
+            .fixedSize()
     }
 }
 

@@ -92,18 +92,14 @@ extension UsageCredits {
     /// "CA$70", "CA$12.40": the currency's symbol, cents only when there are any.
     func money(_ minor: Int) -> String { Money.format(minor: minor, currency: currency, exponent: exponent) }
 
-    /// Off: "Off". On: "CA$12.40 of CA$70 this month" (or "CA$12.40 this month" with no cap).
-    var stateText: String {
-        guard enabled else { return "Off" }
-        let spent = money(spentMinor ?? 0)
-        if let l = limitMinor { return "\(spent) of \(money(l)) this month" }
-        return "\(spent) this month"
-    }
+    /// "Not turned on" or "On".
+    var stateText: String { enabled ? "On" : "Not turned on" }
 
-    /// Off: "Limit CA$70 · Balance CA$0". On: "Balance CA$0 · Auto-reload on".
+    /// Off: "Limit CA$70 · Balance CA$0". On: "Spent CA$12.40 · Limit CA$70 · Balance CA$0 · Auto-reload on".
     var detailText: String {
         var parts: [String] = []
-        if !enabled, let l = limitMinor { parts.append("Limit \(money(l))") }
+        if enabled { parts.append("Spent \(money(spentMinor ?? 0))") }
+        if let l = limitMinor { parts.append("Limit \(money(l))") }
         if let b = balanceMinor { parts.append("Balance \(money(b))") }
         if enabled, autoReload == true { parts.append("Auto-reload on") }
         return parts.joined(separator: " · ")

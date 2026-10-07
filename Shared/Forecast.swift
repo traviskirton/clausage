@@ -95,6 +95,32 @@ extension Forecast {
         l.resetsAt.map { "Resets \(timeText($0, window: l.windowLength))" }
     }
 
+    /// A forecast time, as loose as the forecast: "4:20 PM" for the session, "Sat 3 PM" (nearest hour) for the week.
+    static func runoutTime(_ d: Date, window: TimeInterval, calendar: Calendar = .current) -> String {
+        guard window > 86_400 else { return d.formatted(.dateTime.hour().minute()) }
+        let hour = calendar.dateInterval(of: .hour, for: d.addingTimeInterval(1800))?.start ?? d
+        return "\(hour.formatted(.dateTime.weekday(.abbreviated))) \(hour.formatted(.dateTime.hour()))"      // no comma
+    }
+
+    /// iPhone runout chip: "Out ~Sat 3 PM" on the `is_active` row, whatever its level, when the forecast runs out before the reset.
+    static func runoutChip(_ l: UsageLimit, now: Date = Date()) -> String? {
+        guard l.isActive == true, let hit = hitDate(l, now: now) else { return nil }
+        return "Out ~\(runoutTime(hit, window: l.windowLength))"
+    }
+
+    /// iPhone row: "Back Tue 5:00 AM" once a limit is full, "Resets …" otherwise.
+    static func screenResetText(_ l: UsageLimit) -> String? {
+        guard let r = l.resetsAt else { return nil }
+        return "\(l.percent >= 100 ? "Back" : "Resets") \(timeText(r, window: l.windowLength))"
+    }
+
+    /// Idle row (0%): "Still in the package · Resets Tue" (the session gives its time instead).
+    static func idleText(_ l: UsageLimit) -> String {
+        guard let r = l.resetsAt else { return "Still in the package" }
+        let when = l.windowLength > 86_400 ? r.formatted(.dateTime.weekday(.abbreviated)) : r.formatted(.dateTime.hour().minute())
+        return "Still in the package · Resets \(when)"
+    }
+
     /// Most pressing limit: critical > near critical > normal, then highest percent.
     static func mostPressing(_ limits: [UsageLimit]) -> UsageLimit? {
         func key(_ l: UsageLimit) -> (Int, Double) {

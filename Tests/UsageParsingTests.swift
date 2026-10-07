@@ -51,14 +51,14 @@ final class UsageParsingTests: XCTestCase {
         XCTAssertEqual(Money.format(minor: 0, currency: "USD"), "$0")
         let off = UsageCredits(enabled: false, spentMinor: 0, limitMinor: 7000, balanceMinor: 0, currency: "CAD",
                                autoReload: false, fetched: Date())
-        XCTAssertEqual(off.stateText, "Off")
+        XCTAssertEqual(off.stateText, "Not turned on")
         XCTAssertEqual(off.detailText, "Limit CA$70 · Balance CA$0")
         var on = off
         on.enabled = true; on.spentMinor = 1240; on.autoReload = true
-        XCTAssertEqual(on.stateText, "CA$12.40 of CA$70 this month")
-        XCTAssertEqual(on.detailText, "Balance CA$0 · Auto-reload on")
+        XCTAssertEqual(on.stateText, "On")
+        XCTAssertEqual(on.detailText, "Spent CA$12.40 · Limit CA$70 · Balance CA$0 · Auto-reload on")
         on.limitMinor = nil
-        XCTAssertEqual(on.stateText, "CA$12.40 this month")
+        XCTAssertEqual(on.detailText, "Spent CA$12.40 · Balance CA$0 · Auto-reload on")
     }
 
     func testPlanBadges() {

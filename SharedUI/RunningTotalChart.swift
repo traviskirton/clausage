@@ -55,17 +55,21 @@ struct RunningTotalChart: View {
         let ink3 = style == .full ? Color("Ink3") : Color.white.opacity(0.5)
         let paceColor = style == .full ? Color("PaceLine") : Color.white.opacity(0.35)
 
-        // Limit: dotted line at 100%.
+        // Limit: dotted line at 100% (in the app, Ink 1pt in 2/4 dashes).
         var limit = Path()
         limit.move(to: CGPoint(x: g.left, y: g.y(100)))
         limit.addLine(to: CGPoint(x: g.size.width - g.right, y: g.y(100)))
-        ctx.stroke(limit, with: .color(ink3.opacity(0.8)), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, dash: [0.1, 4]))
+        if compact || style != .full {
+            ctx.stroke(limit, with: .color(ink3.opacity(0.8)), style: StrokeStyle(lineWidth: 1.3, lineCap: .round, dash: [0.1, 4]))
+        } else {
+            ctx.stroke(limit, with: .color(Color("Ink")), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
+        }
 
         // Even pace: 1/7 at day 1 to 100% at day 7.
         var pace = Path()
         pace.move(to: g.p(0, WeeklyChart.pace(day: 0)))
         pace.addLine(to: g.p(6, 100))
-        ctx.stroke(pace, with: .color(paceColor), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        ctx.stroke(pace, with: .color(paceColor), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [5, 5]))
 
         // Last week, faint, while this week is still short (6e).
         if let ghost = chart.ghost {
@@ -121,12 +125,12 @@ struct RunningTotalChart: View {
             } else {
                 let circle = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
                 ctx.fill(circle, with: .color(paper))
-                ctx.stroke(circle, with: shading, lineWidth: 1.5)
+                ctx.stroke(circle, with: shading, lineWidth: compact ? 1.5 : 2)
             }
         }
         if let today = pts.last(where: { $0.day == chart.today && $0.kind == .measured }) {
             let c = g.p(Double(today.day), today.value)
-            let tr: CGFloat = compact ? 4.5 : 5.5
+            let tr: CGFloat = compact ? 4.5 : 5
             ctx.fill(Path(ellipseIn: CGRect(x: c.x - tr, y: c.y - tr, width: tr * 2, height: tr * 2)), with: shading)
         }
     }
@@ -163,7 +167,7 @@ struct RunningTotalChart: View {
         ForEach(0..<7, id: \.self) { d in
             let date = calendar.date(byAdding: .day, value: d, to: chart.windowStart) ?? chart.windowStart
             Text(WeeklyChart.Formatters(calendar: calendar).letter(date))
-                .font(.system(size: compact ? 9 : 11, weight: d == chart.today ? .bold : .regular))
+                .font(.system(size: compact ? 9 : 11, weight: d == chart.today ? .bold : (compact ? .regular : .medium)))
                 .foregroundStyle(d == chart.today ? UsageColor.ink(style)
                                  : d < chart.today ? UsageColor.ink3(style)
                                  : (style == .full ? AnyShapeStyle(Color("PaceLine")) : AnyShapeStyle(.quaternary)))

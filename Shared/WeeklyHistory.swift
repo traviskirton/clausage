@@ -110,6 +110,9 @@ struct WeeklyChart: Equatable {
     let resetsAt: Date
     /// Header, right side: "Running total", "Counting since today", "Counting since Fri", "Week of Oct 6".
     let rightLabel: String
+    /// The answer, above the caption: "Plate’s clean around Sat 3 PM." / "Leftovers likely." / "Plate’s clean." nil in the
+    /// first-week, gap and new-week states, where the caption explains the chart instead.
+    var headline: String? = nil
     let caption: String
 
     var firstDay: Int { points.first?.day ?? today }
@@ -173,6 +176,7 @@ struct WeeklyChart: Equatable {
 
         let fmt = Formatters(calendar: calendar)
         let rightLabel: String, caption: String
+        var headline: String?
         if ghost != nil {
             rightLabel = "Week of \(fmt.monthDay(start))"
             caption = "Clean slate. Last week’s line stays in the background for comparison until \(fmt.weekdayLong(calendar.date(byAdding: .day, value: 2, to: start) ?? start))."
@@ -188,7 +192,7 @@ struct WeeklyChart: Equatable {
             }
         } else if current >= 100 {
             rightLabel = "Running total"
-            caption = "You’ve hit this week’s limit. It resets \(fmt.weekdayTime(reset))."
+            (headline, caption) = paceCaption(current: current, now: now, start: start, reset: reset, fmt: fmt)
         } else if let gap = firstGap(points) {
             rightLabel = "Running total"
             let names = gap.days.map { fmt.weekdayShort(dayDate($0, start, calendar)) }
@@ -197,22 +201,29 @@ struct WeeklyChart: Equatable {
             caption = "No reading on \(missed) (\(sleeper)), so \(span) share one dashed stretch. The total is still exact."
         } else {
             rightLabel = "Running total"
-            caption = paceCaption(current: current, now: now, start: start, reset: reset, fmt: fmt)
+            (headline, caption) = paceCaption(current: current, now: now, start: start, reset: reset, fmt: fmt)
         }
 
         return WeeklyChart(today: today, points: points, beforeInstall: beforeInstall, gapFromStart: gapFromStart,
                            ghost: ghost, current: current, windowStart: start, resetsAt: reset,
-                           rightLabel: rightLabel, caption: caption)
+                           rightLabel: rightLabel, headline: headline, caption: caption)
     }
 
-    /// "The dashed line is an even pace to 100% by Tue 5:00 AM. You're just under it."
-    static func paceCaption(current: Double, now: Date, start: Date, reset: Date, fmt: Formatters) -> String {
-        let head = "The dashed line is an even pace to 100% by \(fmt.weekdayTime(reset))."
-        if current >= 100 { return "You’ve hit this week’s limit. It resets \(fmt.weekdayTime(reset))." }
-        let elapsed = min(max(now.timeIntervalSince(start) / reset.timeIntervalSince(start), 0), 1)
-        let pace = elapsed * 100
-        if current > pace + 0.5 { return "\(head) You’re above it, so at this pace you’ll reach the limit before then." }
-        return "\(head) " + (pace - current < 10 ? "You’re just under it." : "You’re well under it.")
+    /// The answer and the reason, compared with the even-pace line:
+    /// above it, "Plate’s clean around Sat 3 PM." / "You’re eating faster than the dashed line, and seconds aren’t served until Tue 5:00 AM.";
+    /// at or under it, "Leftovers likely." / "You’re at or under the dashed line, so you should make it to Tue 5:00 AM.";
+    /// full, "Plate’s clean." / "Seconds are served Tue 5:00 AM."
+    static func paceCaption(current: Double, now: Date, start: Date, reset: Date, fmt: Formatters) -> (String, String) {
+        let resetText = fmt.weekdayTime(reset)
+        if current >= 100 { return ("Plate’s clean.", "Seconds are served \(resetText).") }
+        let seconds = now.timeIntervalSince(start)
+        let pace = min(max(seconds / reset.timeIntervalSince(start), 0), 1) * 100
+        if current > pace + 0.5, seconds > 0, current > 0 {
+            let hit = now.addingTimeInterval((100 - current) / (current / seconds))
+            return ("Plate’s clean around \(fmt.weekdayHour(min(hit, reset))).",
+                    "You’re eating faster than the dashed line, and seconds aren’t served until \(resetText).")
+        }
+        return ("Leftovers likely.", "You’re at or under the dashed line, so you should make it to \(resetText).")
     }
 
     private static func dayDate(_ d: Int, _ start: Date, _ calendar: Calendar) -> Date {
@@ -257,6 +268,10 @@ struct WeeklyChart: Equatable {
         func weekdayLong(_ d: Date) -> String { string(d, "EEEE") }
         func monthDay(_ d: Date) -> String { string(d, "MMM d") }
         func weekdayTime(_ d: Date) -> String { string(d, "EEE h:mm a") }
+        /// "Sat 3 PM", to the nearest hour (forecasts are approximate).
+        func weekdayHour(_ d: Date) -> String {
+            string(calendar.dateInterval(of: .hour, for: d.addingTimeInterval(1800))?.start ?? d, "EEE h a")
+        }
         func letter(_ d: Date) -> String { String(string(d, "EEEEE")) }
     }
 }

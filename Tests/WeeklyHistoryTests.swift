@@ -60,6 +60,7 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertEqual(c.missingDays, [4])
         XCTAssertEqual(c.points[4].value, 60, accuracy: 0.001)       // halfway between Fri 50 and Sun 70
         XCTAssertEqual(c.rightLabel, "Running total")
+        XCTAssertNil(c.headline)
         XCTAssertEqual(c.caption, "No reading on Saturday (the phone napped), so Sat and Sun share one dashed stretch. The total is still exact.")
     }
 
@@ -73,7 +74,8 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertNil(c.ghost)
         XCTAssertEqual(c.current, 92)
         XCTAssertEqual(c.rightLabel, "Running total")
-        XCTAssertEqual(c.caption, "The dashed line is an even pace to 100% by Tue 5:00 AM. You’re just under it.")
+        XCTAssertEqual(c.headline, "Leftovers likely.")
+        XCTAssertEqual(c.caption, "You’re at or under the dashed line, so you should make it to Tue 5:00 AM.")
     }
 
     // 6e: right after the reset, last week shows as a ghost until Thursday.
@@ -122,18 +124,21 @@ final class WeeklyHistoryTests: XCTestCase {
         var h = WeeklyHistory()
         record(&h, [(0, 20, 30), (1, 20, 60)])
         let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(60), now: at(1, 21), calendar: cal))
-        XCTAssertEqual(c.caption, "The dashed line is an even pace to 100% by Tue 5:00 AM. You’re above it, so at this pace you’ll reach the limit before then.")
+        // 60% after 40 of 168 hours: 1.5%/h, so 100% in another 26h40m, Thu 11:40 PM → the nearest hour.
+        XCTAssertEqual(c.headline, "Plate’s clean around Fri 12 AM.")
+        XCTAssertEqual(c.caption, "You’re eating faster than the dashed line, and seconds aren’t served until Tue 5:00 AM.")
     }
 
-    func testWellUnderAndLimitCaptions() throws {
+    func testUnderPaceAndFullCaptions() throws {
         var h = WeeklyHistory()
         record(&h, [(0, 20, 5), (1, 20, 7), (2, 20, 8), (3, 20, 10)])
         let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(10), now: at(3, 21), calendar: cal))
-        XCTAssertTrue(c.caption.hasSuffix("You’re well under it."), c.caption)
+        XCTAssertEqual(c.headline, "Leftovers likely.")
         var full = WeeklyHistory()
         record(&full, [(0, 20, 40), (3, 20, 100)])          // the limit message wins over the missed-day one
         let hit = try XCTUnwrap(WeeklyChart.make(history: full, window: window(100), now: at(3, 21), calendar: cal))
-        XCTAssertEqual(hit.caption, "You’ve hit this week’s limit. It resets Tue 5:00 AM.")
+        XCTAssertEqual(hit.headline, "Plate’s clean.")
+        XCTAssertEqual(hit.caption, "Seconds are served Tue 5:00 AM.")
     }
 
     func testRecordMergesUnchangedReadingsOnTheSameDay() {

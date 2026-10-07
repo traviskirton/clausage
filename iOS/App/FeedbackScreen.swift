@@ -304,9 +304,9 @@ enum UsageScreenshot {
         let limits = DisplayPrefs.visible(s.limits)
         let activeID = limits.first { $0.isActive == true }?.id
         let view = VStack(alignment: .leading, spacing: 0) {
-            UsageHeader(plan: s.plan).padding(.bottom, 24)
+            TitleRow(plan: s.plan).padding(.bottom, 24)
             VStack(spacing: UsageSize.screen.rowGap) {
-                ForEach(limits) { UsageRow(limit: $0, now: now, size: .screen, showActiveChip: $0.id == activeID, ring: Color("Paper")) }
+                ForEach(limits) { UsageRow(limit: $0, now: now, size: .screen, showRunoutChip: $0.id == activeID, ring: Color("Paper")) }
             }
             if let b = s.breakdown, let top = b.rows.first {
                 Text("\(Int(top.percent.rounded()))% of this week came from \(top.name)")

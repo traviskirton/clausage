@@ -1,14 +1,16 @@
 import SwiftUI
 import UIKit
 
-/// The main screen: header with the plan badge, limit rows, the weekly running total, this week by product,
-/// usage credits and the footer. Pull to refresh counts the tally up; the gear opens Settings.
+/// The main screen: a system navigation bar ("Clausage" large title with the tally and plan chip, the gear), limit rows,
+/// the weekly running total, this week by product, usage credits and the footer. Pull to refresh counts the tally up.
 struct UsageScreen: View {
     @StateObject private var model = PhoneModel()
     @State private var showSignIn = false
     @State private var showSettings = false
     @State private var pull: CGFloat = 0
     @State private var restY: CGFloat?
+    /// Before iOS 26: the title row has scrolled under the bar, so the bar shows "Clausage" inline.
+    @State private var titleScrolledAway = false
     @State private var slash: Double = 0
     @State private var justUpdated = false
     @State private var debugScreen: String?
@@ -27,7 +29,9 @@ struct UsageScreen: View {
                                   onSample: { model.startSample() })
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .modifier(UsageNavigation(signedIn: model.signedIn, titled: !SharedStore.isFree(model.snapshot),
+                                      plan: model.snapshot?.plan, inlineTitle: titleScrolledAway,
+                                      onSettings: { showSettings = true }))
             .navigationDestination(isPresented: $showSettings) { SettingsScreen(model: model) }
             .navigationDestination(isPresented: Binding(get: { debugScreen != nil }, set: { if !$0 { debugScreen = nil } })) {
                 switch debugScreen {
@@ -67,9 +71,9 @@ struct UsageScreen: View {
                 }
                 .frame(height: 0)
 
-                Color.clear.frame(height: 58)        // room for the gear, which stays put
-                UsageHeader(plan: snap?.plan)
-                    .padding(.bottom, 26)
+                if !UsageNavigation.systemTitleRow {
+                    TitleRow(plan: snap?.plan).padding(.top, 14).padding(.bottom, 22)
+                }
                 if let sample = SampleData.scenario(snap?.sample) {
                     SampleBanner(scenario: sample) { model.stopSample() }.padding(.bottom, 24)
                 }
@@ -97,13 +101,14 @@ struct UsageScreen: View {
         .coordinateSpace(name: "usage")
         .scrollIndicators(.hidden)
         .refreshable { await pullRefresh() }
-        .onPreferenceChange(PullKey.self) { y in
+        .modifier(ScrollOffset { y in
             if restY == nil { restY = y }
-            pull = max(0, y - (restY ?? y))
-        }
-        .overlay(alignment: .top) { statusScrim }
+            let offset = (restY ?? y) - y        // > 0 scrolled down, < 0 pulled
+            pull = max(0, -offset)
+            let away = offset > 60
+            if away != titleScrolledAway { withAnimation(.easeInOut(duration: 0.15)) { titleScrolledAway = away } }
+        })
         .overlay(alignment: .top) { pullIndicator }
-        .overlay(alignment: .topTrailing) { gear }
     }
 
     // MARK: Free plan
@@ -115,7 +120,7 @@ struct UsageScreen: View {
             ScrollView {
                 VStack(spacing: 0) {
                     if let sample = SampleData.scenario(model.snapshot?.sample) {
-                        SampleBanner(scenario: sample) { model.stopSample() }.padding(.top, 62)
+                        SampleBanner(scenario: sample) { model.stopSample() }.padding(.top, 8)
                     }
                     Spacer(minLength: 72)
                     VStack(spacing: 0) {
@@ -171,33 +176,34 @@ struct UsageScreen: View {
                     TallyLoader(size: 30)
                     Text("Checking…").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
                 }
-                .padding(.top, 50)
+                .padding(.top, 8)
                 .accessibilityHidden(true)
             }
         }
-        .overlay(alignment: .topTrailing) { gear }
     }
 
     @ViewBuilder private func content(_ s: SharedStore.Snapshot, now: Date) -> some View {
         let limits = DisplayPrefs.visible(s.limits)
         let activeID = limits.first { $0.isActive == true }?.id
-        VStack(alignment: .leading, spacing: 30) {
+        VStack(alignment: .leading, spacing: 0) {
             if s.limits.isEmpty {
                 NothingToCount().brandCard()
             } else {
+                // Fixed order (session, all models, then each model); never re-sorted by usage.
                 VStack(spacing: UsageSize.screen.rowGap) {
                     ForEach(limits) { l in
                         UsageRow(limit: l, now: now, size: .screen, stale: Forecast.isStale(updated: s.updated, now: now),
-                                 showActiveChip: l.id == activeID, ring: Color("Paper"))
+                                 showRunoutChip: l.id == activeID, ring: Color("Paper"))
                     }
                 }
                 if let w = s.weekly {
                     let level = s.limits.first { $0.kind == "weekly_all" }.map(Forecast.level) ?? (w.percent >= 95 ? .critical : w.percent >= 85 ? .warning : .normal)
                     RunningTotalCard(chart: WeeklyChart.make(history: model.history, window: w, now: now), level: level, now: now)
+                        .padding(.top, 36)
                 }
             }
-            if let b = s.breakdown { ProductCard(breakdown: b) }
-            if let c = s.credits { CreditsCard(credits: c) }
+            if let b = s.breakdown { ProductCard(breakdown: b).padding(.top, 28) }
+            if let c = s.credits { CreditsCard(credits: c).padding(.top, 28) }
         }
     }
 
@@ -226,35 +232,9 @@ struct UsageScreen: View {
         }
     }
 
-    /// Content fades out under the status bar instead of colliding with the clock.
-    private var statusScrim: some View {
-        GeometryReader { g in
-            LinearGradient(colors: [Color("Paper"), Color("Paper").opacity(0.9), Color("Paper").opacity(0)],
-                           startPoint: .top, endPoint: .bottom)
-                .frame(height: g.safeAreaInsets.top + 16)
-                .offset(y: -g.safeAreaInsets.top)
-        }
-        .allowsHitTesting(false)
-    }
+    // MARK: Pull to refresh
 
-    // MARK: Gear and pull to refresh
-
-    private var gear: some View {
-        Button { showSettings = true } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: 19, weight: .regular))
-                .foregroundStyle(Color("Ink"))
-                .frame(width: 44, height: 44)
-                .modifier(GlassCircle())
-                .contentShape(Circle())     // a plain button only hits the glyph's strokes; the glass around it doesn't count
-        }
-        .buttonStyle(.plain)
-        .padding(.trailing, 16)
-        .padding(.top, 6)
-        .accessibilityLabel("Settings")
-    }
-
-    /// Below the gear: the tally counts up a stroke at a time as you pull; while refreshing it keeps counting;
+    /// Under the navigation bar: the tally counts up a stroke at a time as you pull; while refreshing it keeps counting;
     /// on success the Ember slash lands.
     private var pullIndicator: some View {
         let strokes = min(4, Int(pull / 22))
@@ -268,7 +248,7 @@ struct UsageScreen: View {
             Text(model.refreshing ? "Counting…" : (slash > 0 ? "Updated" : (release ? "Release to refresh" : "Pull to refresh")))
                 .font(.system(size: 13)).foregroundStyle(Color("Ink2"))
         }
-        .padding(.top, 50)
+        .padding(.top, 8)
         .opacity(model.refreshing || slash > 0 ? 1 : min(1, Double(pull) / 50))
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -290,6 +270,19 @@ struct UsageScreen: View {
     }
 }
 
+/// The content's top edge as it scrolls (0 at rest, positive when pulled down). iOS 18 reads the scroll geometry; iOS 17
+/// falls back to a preference from the content, which doesn't always update while scrolling.
+private struct ScrollOffset: ViewModifier {
+    let onChange: (CGFloat) -> Void
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self, of: { -($0.contentOffset.y + $0.contentInsets.top) }) { _, y in onChange(y) }
+        } else {
+            content.onPreferenceChange(PullKey.self, perform: onChange)
+        }
+    }
+}
+
 private struct PullKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
@@ -303,13 +296,46 @@ struct ScreenBackground: View {
     }
 }
 
-/// A 44pt glass circle on iOS 26, a material circle before that.
-struct GlassCircle: ViewModifier {
+/// The system navigation bar. Signed in: "Clausage" as the large title and the gear (SF Symbol `gearshape`) trailing.
+/// On iOS 26 the large title is the title row (tally, "Clausage", plan chip), which iOS collapses to an inline "Clausage"
+/// on scroll. Before 26 the title row is ordinary content and the bar stays empty apart from the gear.
+/// The Free screen has the gear but no title; the welcome screen has no bar.
+private struct UsageNavigation: ViewModifier {
+    let signedIn: Bool
+    let titled: Bool
+    let plan: Plan?
+    /// Before iOS 26 only (iOS 26 collapses the large title itself).
+    let inlineTitle: Bool
+    let onSettings: () -> Void
+
+    static var systemTitleRow: Bool {
+        if #available(iOS 26.0, *) { return true } else { return false }
+    }
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Circle())
+        if !signedIn {
+            content.toolbar(.hidden, for: .navigationBar)
+        } else if #available(iOS 26.0, *), titled {
+            content
+                .navigationTitle("Clausage")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .largeTitle) { TitleRow(plan: plan) }
+                    ToolbarItem(placement: .title) { Text("Clausage").font(.system(size: 17, weight: .semibold)) }
+                    gear
+                }
         } else {
-            content.background(.ultraThinMaterial, in: Circle())
+            content
+                .navigationTitle(titled && inlineTitle ? "Clausage" : "")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { gear }
+        }
+    }
+
+    private var gear: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(action: onSettings) { Image(systemName: "gearshape") }
+                .accessibilityLabel("Settings")
         }
     }
 }
