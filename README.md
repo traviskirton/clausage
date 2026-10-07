@@ -1,17 +1,25 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="media/banner-dark.png">
-    <img src="media/banner-light.png" alt="clausage: a tally of how much you've eaten, and what's left on your plate." width="100%">
+    <img src="media/banner-light.png" alt="Clausage: a free Claude usage tracker for the Mac menu bar" width="100%">
   </picture>
 </p>
 
 <p align="center">
   <a href="https://clausage.ai/updates/Clausage.zip"><b>Download for Mac</b></a> ·
-  <a href="https://clausage.ai">clausage.ai</a> ·
+  <a href="https://clausage.ai/gh">clausage.ai</a> ·
   <a href="#privacy">Privacy</a>
 </p>
 
-Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, and tells you when you'll run out if you keep up the sizzle.
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-26231F" alt="macOS 13 or later">
+  <img src="https://img.shields.io/github/license/traviskirton/clausage?color=26231F" alt="MIT license">
+  <img src="https://img.shields.io/github/v/release/traviskirton/clausage?color=C23B14&label=release" alt="Latest release">
+</p>
+
+**Clausage** is a free, open-source macOS menu bar app that shows your Claude plan usage limits: the current 5-hour session, your weekly limit and each per-model limit. Every limit gets a pace tick and, when you're running hot, a clock time for when you'll run out. It works for claude.ai chat users; Claude Code isn't required. Made by Travis Kirton.
+
+Think of it as a tally of how much you've eaten, and what's left on your plate if you keep up the sizzle. iPhone app with Home Screen and Lock Screen widgets coming soon.
 
 <p align="center">
   <img src="media/mac.png" alt="The Clausage menu bar popover and desktop widgets on a Mac" width="100%">
@@ -24,7 +32,7 @@ Clausage keeps your Claude plan limits in the Mac menu bar and on your iPhone, a
 - **Pace tick.** Shows how much you'd have eaten by now at an even pace. Bar ahead of the tick? Slow down and chew.
 - **Forecast.** Past 85%, you get `Out ~Mon 9:40 PM`: when you'll clean your plate, if that's before the reset serves seconds.
 - **Weekly running total.** Your week filling up day by day against an even pace, plus which product had the biggest appetite.
-- **Widgets.** Mac desktop, iPhone Home Screen and Lock Screen.
+- **Widgets.** Mac desktop now; iPhone Home Screen and Lock Screen with the iPhone app (coming soon).
 - **Nudges.** Optional notifications at 85% and 95%, when you're on track to clean your plate early, and when a limit resets.
 
 ## Frankly, it keeps quiet
@@ -43,7 +51,7 @@ The bar color comes from the percentage alone. The `~` means the forecast is a g
   <img src="media/widgets.png" alt="Clausage medium and small widgets and Lock Screen gauges" width="100%">
 </p>
 
-Your limits sit on your desktop, Home Screen and Lock Screen, so one glance tells you if there's room for another bite before you start a big task.
+Your limits sit on your desktop (and soon your Home Screen and Lock Screen), so one glance tells you if there's room for another bite before you start a big task.
 
 ## What's in the grinder (Mac only)
 
@@ -93,4 +101,4 @@ Spotted wrong numbers or have an idea? [Open an issue](../../issues), or use **S
 
 ---
 
-<sub>Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic. No actual sausages were harmed.</sub>
+<sub>Clausage is an independent app, not made by or affiliated with Anthropic. Claude is a trademark of Anthropic. This is the free, open-source Clausage at [clausage.ai](https://clausage.ai), not affiliated with other apps of the same name. No actual sausages were harmed.</sub>
