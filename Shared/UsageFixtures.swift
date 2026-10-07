@@ -101,4 +101,12 @@ enum UsageFixtures {
         s.email = "you@example.com"
         return s
     }
+
+    /// Signed in on Free: claude.ai has no usage page, so no limits at all.
+    static var free: SharedStore.Snapshot {
+        var s = SharedStore.Snapshot(limits: [], updated: screenNow, connected: true)
+        s.plan = Plan(badge: "Free", orgName: nil)
+        s.email = "travis@postfl.com"
+        return s
+    }
 }

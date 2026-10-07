@@ -18,6 +18,7 @@ struct SettingsScreen: View {
     @State private var notificationsDenied = false
 
     private var limits: [UsageLimit] { Forecast.ordered(model.snapshot?.limits ?? []) }
+    private var free: Bool { SharedStore.isFree(model.snapshot) }
     private var shownCount: Int { DisplayPrefs.visible(model.snapshot?.limits ?? []).count }
 
     var body: some View {
@@ -49,14 +50,21 @@ struct SettingsScreen: View {
             } header: { SectionTitle("Account") }
 
             Section {
-                toggle("Near limit", "When a limit reaches 85%", $near) { PhonePrefs.notifyNear = $0 }
-                toggle("Critical", "When a limit reaches 95%", $critical) { PhonePrefs.notifyCritical = $0 }
-                toggle("Runout forecast", "Only if you’ll run out before it resets", $runout) { PhonePrefs.notifyRunout = $0 }
-                toggle("Limit resets", nil, $resets) { PhonePrefs.notifyResets = $0 }
+                // Free: nothing to alert on. Disabled (not just faded); saved choices are kept for later.
+                Group {
+                    toggle("Near limit", "When a limit reaches 85%", $near) { PhonePrefs.notifyNear = $0 }
+                    toggle("Critical", "When a limit reaches 95%", $critical) { PhonePrefs.notifyCritical = $0 }
+                    toggle("Runout forecast", "Only if you’ll run out before it resets", $runout) { PhonePrefs.notifyRunout = $0 }
+                    toggle("Limit resets", nil, $resets) { PhonePrefs.notifyResets = $0 }
+                }
+                .disabled(free)
+                .opacity(free ? 0.45 : 1)
             } header: {
                 SectionTitle("Notifications")
             } footer: {
-                if notificationsDenied {
+                if free {
+                    Text("Limit alerts come back on Pro or Max.")
+                } else if notificationsDenied {
                     Text("Notifications are off for Clausage in iOS Settings, so these won’t arrive.")
                 } else {
                     Text("Example: “At this pace you’ll reach the All models limit Mon 9:40 PM.”")

@@ -58,7 +58,11 @@ struct GalleryLock: View {
                 .font(.system(size: 17, weight: .semibold))
             Text("9:41").font(.system(size: 96, weight: .bold))
             HStack(spacing: 14) {
-                ForEach(limits) { UsageGauge(limit: $0, plainBackground: true).frame(width: 72, height: 72) }
+                if SharedStore.isFree(snapshot) {
+                    FreeGauge(plainBackground: true).frame(width: 72, height: 72)
+                } else {
+                    ForEach(limits) { UsageGauge(limit: $0, plainBackground: true).frame(width: 72, height: 72) }
+                }
             }
         }
         .foregroundStyle(.white)
@@ -76,7 +80,7 @@ struct GalleryLock: View {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         let scenarios: [(String, SharedStore.Snapshot)] = [
             ("mixed", UsageFixtures.mixed), ("calm", UsageFixtures.calm),
-            ("critical", UsageFixtures.allCritical), ("stale", UsageFixtures.stale)]
+            ("critical", UsageFixtures.allCritical), ("stale", UsageFixtures.stale), ("free", UsageFixtures.free)]
         let sizes: [(String, UsageSize, CGSize)] = [
             ("small", .small, CGSize(width: 158, height: 158)),
             ("medium", .medium, CGSize(width: 338, height: 158)),

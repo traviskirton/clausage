@@ -21,8 +21,25 @@ enum UsageSource {
         }
         let transport = CookieTransport(record: record)
         do {
-            let report = try await UsageClient.fetch(session: transport, orgID: record.orgID)
             var snap = SharedStore.load() ?? .init(limits: [], updated: Date(), connected: true)
+            // Free has no usage page, so the plan decides first. It's read after sign-in and then daily, but on every
+            // refresh while Free, so an upgrade shows up as soon as it happens.
+            if snap.plan == nil || snap.plan?.isFree == true || snap.planUpdated.map({ Date().timeIntervalSince($0) > 86_400 }) ?? true,
+               let org = try? await UsageClient.resolveOrg(transport) {
+                snap.plan = org.plan
+                snap.planUpdated = Date()
+                if snap.email == nil { snap.email = await UsageClient.accountEmail(transport) }
+            }
+            if snap.plan?.isFree == true {
+                // Nothing to count. Weekly history already on the device stays as it is.
+                snap.limits = []; snap.breakdown = nil; snap.weekly = nil; snap.credits = nil; snap.unparsedLimits = nil
+                snap.updated = Date()
+                snap.connected = true
+                snap.cleared = nil
+                SharedStore.save(snap)
+                return .ok
+            }
+            let report = try await UsageClient.fetch(session: transport, orgID: record.orgID)
             snap.limits = report.limits
             snap.updated = Date()
             snap.connected = true
@@ -40,13 +57,6 @@ enum UsageSource {
             if snap.credits.map({ Date().timeIntervalSince($0.fetched) > 3600 }) ?? true,
                let credits = await UsageClient.credits(transport, orgID: record.orgID) {
                 snap.credits = credits
-            }
-            // The plan tier comes from the org list: read it after sign-in, then at most daily.
-            if snap.planUpdated.map({ Date().timeIntervalSince($0) > 86_400 }) ?? true,
-               let org = try? await UsageClient.resolveOrg(transport) {
-                snap.plan = org.plan
-                snap.planUpdated = Date()
-                if snap.email == nil { snap.email = await UsageClient.accountEmail(transport) }
             }
             SharedStore.save(snap)
             return .ok

@@ -46,7 +46,8 @@ struct WelcomeScreen: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
-            Text("You sign in on claude.ai. Clausage never sees your password and isn’t made by Anthropic.")
+            (Text("For Claude Pro and Max plans. ").fontWeight(.semibold).foregroundStyle(Color("Ink").opacity(0.82))
+             + Text("You sign in on claude.ai. Clausage never sees your password and isn’t made by Anthropic."))
                 .font(.system(size: 12)).foregroundStyle(Color("Ink3"))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40).padding(.top, 12).padding(.bottom, 16)

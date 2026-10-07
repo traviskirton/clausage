@@ -27,7 +27,7 @@ struct MenuBarLabel: View {
         let dark = fillBase == "white" || (fillBase == "auto" && scheme == .dark)
         return Image(nsImage: MenuBarIcon.image(display: MenuDisplay(rawValue: display) ?? .off,
                                                 limits: model.limits, tint: tint, darkMenubar: dark,
-                                                pinnedBase: fillBase != "auto"))
+                                                pinnedBase: fillBase != "auto", free: model.activeIsFree))
     }
 }
 
@@ -52,7 +52,10 @@ struct UsageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header.padding(.bottom, 12)
-            if model.connected {
+            if model.connected, model.activeIsFree {
+                freeBody
+                footer.padding(.top, 10)
+            } else if model.connected {
                 let limits = Forecast.ordered(model.limits)
                 if limits.isEmpty, model.updated != nil, model.error == nil {
                     Text("Nothing to count: your org didn’t set any plan limits.")
@@ -96,9 +99,9 @@ struct UsageView: View {
             let id = o.id
             let announcement: String
             if o.ok {
-                // scheduled refreshes just update the time; no success hold
-                hold = o.manual ? RefreshHold(id: id, failed: false) : nil
-                announcement = "Updated"
+                // scheduled refreshes just update the time; no success hold. On Free it goes straight back to "Checked".
+                hold = o.manual && !model.activeIsFree ? RefreshHold(id: id, failed: false) : nil
+                announcement = model.activeIsFree ? "Checked" : "Updated"
             } else {
                 hold = RefreshHold(id: id, failed: true)
                 announcement = "Couldn't update"
@@ -114,6 +117,32 @@ struct UsageView: View {
                 if hold?.id == id { hold = nil }
             }
         }
+    }
+
+    // MARK: Free plan
+
+    /// claude.ai has no usage page on Free: the empty tally, one line of why, and one way forward.
+    private var freeBody: some View {
+        VStack(spacing: 6) {
+            EmptyTally(size: 40)
+            VStack(spacing: 6) {
+                Text(FreePlanCopy.headline).font(.clausageDisplay(15)).brandTracking(-0.03, size: 15).foregroundStyle(Color("Ink"))
+                Text(FreePlanCopy.bodyShort).font(.system(size: 11)).lineSpacing(2).foregroundStyle(Color("Ink2"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .multilineTextAlignment(.center)
+            .accessibilityElement(children: .combine)
+            if let a = model.active {
+                Button { model.closePopover(); model.switchAccount(from: a) } label: {
+                    Text(FreePlanCopy.switchAccount).font(.system(size: 11, weight: .medium)).foregroundStyle(Color("EmberDeep"))
+                }
+                .buttonStyle(.plain)
+                .modifier(HandCursor())
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8).padding(.horizontal, 4).padding(.bottom, 4)
     }
 
     // MARK: Header and product line
@@ -186,7 +215,8 @@ struct UsageView: View {
     private var refreshLabel: some View {
         let state = refreshState
         func layer(_ s: RefreshState) -> Double { state == s ? 1 : 0 }
-        let time = model.updated.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? "—"
+        let verb = model.activeIsFree ? "Checked" : "Updated"
+        let time = model.updated.map { "\(verb) \($0.formatted(date: .omitted, time: .shortened))" } ?? "—"
         return Button {
             guard refreshState == .hover || refreshState == .idle else { return }
             model.refresh(userInitiated: true)
@@ -219,7 +249,9 @@ struct UsageView: View {
         .onHover { hoveringRefresh = $0 }
         .modifier(HandCursor())
         .help("Refresh now (⌘R)")
-        .accessibilityLabel("Refresh. Last updated \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never").")
+        .accessibilityLabel(model.activeIsFree
+            ? "Check again. Last checked \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never")."
+            : "Refresh. Last updated \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never").")
     }
 }
 

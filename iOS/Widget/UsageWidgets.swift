@@ -134,7 +134,9 @@ struct UsageGaugeView: View {
 
     var body: some View {
         Group {
-            if let l = limit, let s = entry.snapshot {
+            if SharedStore.isFree(entry.snapshot) {
+                FreeGauge()
+            } else if let l = limit, let s = entry.snapshot {
                 UsageGauge(limit: l, stale: Forecast.isStale(updated: s.updated, now: entry.date))
             } else {
                 ZStack { AccessoryWidgetBackground(); Text("Sign in").font(.system(size: 10, weight: .semibold)) }

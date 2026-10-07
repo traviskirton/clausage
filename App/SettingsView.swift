@@ -206,6 +206,7 @@ struct SettingsRow<Control: View>: View {
     let title: String
     var detail: String? = nil
     @ViewBuilder let control: Control
+    @Environment(\.isEnabled) private var enabled
 
     init(_ title: String, detail: String? = nil, @ViewBuilder control: () -> Control) {
         self.title = title
@@ -221,6 +222,7 @@ struct SettingsRow<Control: View>: View {
                     Text(detail).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .opacity(enabled ? 1 : 0.45)
             Spacer(minLength: 8)
             control
         }
@@ -281,17 +283,24 @@ struct BrandSegmented<T: Hashable>: View {
 
 /// Capsule toggle: Ember with white text when on, the faint control fill when off.
 struct ChipToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Button(action: { configuration.isOn.toggle() }) {
-            configuration.label
-                .font(.system(size: 12, weight: .semibold))
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(configuration.isOn ? SettingsColor.ember : SettingsColor.control, in: Capsule())
-                .foregroundStyle(configuration.isOn ? SettingsColor.onEmber : SettingsColor.text)
-                .contentShape(Capsule())
+    func makeBody(configuration: Configuration) -> some View { Chip(configuration: configuration) }
+
+    private struct Chip: View {
+        let configuration: ToggleStyleConfiguration
+        @Environment(\.isEnabled) private var enabled
+        var body: some View {
+            Button(action: { configuration.isOn.toggle() }) {
+                configuration.label
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(configuration.isOn ? SettingsColor.ember : SettingsColor.control, in: Capsule())
+                    .foregroundStyle(configuration.isOn ? SettingsColor.onEmber : SettingsColor.text)
+                    .opacity(enabled ? 1 : 0.45)
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(configuration.isOn ? [.isSelected] : [])
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(configuration.isOn ? [.isSelected] : [])
     }
 }
 
@@ -446,9 +455,12 @@ struct GeneralTab: View {
 
 struct AccountsTab: View {
     @ObservedObject var model: UsageModel
+    private var anyFree: Bool { model.accounts.contains { model.states[$0.id]?.plan?.isFree == true } }
+
     var body: some View {
         SettingsSection("Claude accounts",
-                        footer: "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one.") {
+                        footer: (anyFree ? "claude.ai doesn’t show usage on the Free plan, so there’s nothing to count. Clausage checks again on every refresh and starts counting as soon as there’s usage. " : "")
+                            + "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one.") {
             if model.accounts.isEmpty {
                 SettingsRow("Not connected", detail: "Sign in to see your plan usage.") {
                     Button("Connect…") { model.connect() }
@@ -462,6 +474,10 @@ struct AccountsTab: View {
                         HStack {
                             if st?.signedOut == true { Button("Sign in…") { model.reconnect(a) } }
                             else if a.id != model.active?.id { Button("Show") { model.setActive(a.id) } }
+                            if st?.plan?.isFree == true, st?.signedOut != true {
+                                Button("Switch…") { model.switchAccount(from: a) }
+                                    .help("Use another account: signs this one out, then opens claude.ai sign-in.")
+                            }
                             Button("Disconnect", role: .destructive) { model.disconnect(a) }
                         }
                     }
@@ -476,7 +492,8 @@ struct AccountsTab: View {
         if st?.signedOut == true { return "Signed out" }
         var parts: [String] = []
         if let p = st?.plan?.badge { parts.append(p) }
-        parts.append(st?.updated.map { "Last updated \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Fetching usage…")
+        let verb = st?.plan?.isFree == true ? "Checked" : "Last updated"
+        parts.append(st?.updated.map { "\(verb) \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Fetching usage…")
         return parts.joined(separator: " · ")
     }
 }
@@ -485,6 +502,7 @@ struct AccountsTab: View {
 
 /// What's driving your usage, the way Claude Code's `/usage` computes it, from the transcripts on this Mac.
 struct ClaudeCodeTab: View {
+    @ObservedObject private var model = UsageModel.shared
     @State private var hasAccess = ClaudeCodeLogs.hasAccess || ClaudeCodeLogs.previewAccess
     @State private var week = true
     @State private var result: ContributorsScan.Result? = ClaudeCodeLogs.lastResult
@@ -493,6 +511,37 @@ struct ClaudeCodeTab: View {
     private var window: ContributorsScan.Window? { result.map { week ? $0.week : $0.day } }
 
     var body: some View {
+        if model.activeIsFree { freeBody } else { scanBody }
+    }
+
+    /// Free: the switch still works; the breakdown is replaced by why it's empty.
+    private var freeBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            scanSwitch
+            VStack(spacing: 8) {
+                EmptyTally(size: 36)
+                Text("Nothing to break down yet").font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
+                Text("This shows what’s driving your Claude Code limit. It needs a Pro or Max plan, since Free doesn’t include Claude Code.")
+                    .font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: 340).fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28).padding(.horizontal, 20)
+            .background(Color("Cream2"), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var scanSwitch: some View {
+        SettingsSection(nil) {
+            SettingsRow("Scan Claude Code sessions",
+                        detail: "Reads ~/.claude on this Mac. Only totals are kept, never prompts or code, and nothing leaves this Mac.") {
+                BrandSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
+            }
+        }
+    }
+
+    private var scanBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
                 Text("\(week ? "Last 7 days" : "Last 24 hours") of Claude Code on this Mac. Shares overlap, so they don’t add up to 100%.")
@@ -519,12 +568,7 @@ struct ClaudeCodeTab: View {
                 }
             }
 
-            SettingsSection(nil) {
-                SettingsRow("Scan Claude Code sessions",
-                            detail: "Reads ~/.claude on this Mac. Only totals are kept, never prompts or code, and nothing leaves this Mac.") {
-                    BrandSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
-                }
-            }
+            scanSwitch
         }
         .task { if hasAccess { await load(force: false) } }
     }
@@ -626,6 +670,7 @@ struct ClaudeCodeTab: View {
 
 /// Which alerts you get and the macOS permission, all in one place.
 struct NotificationsTab: View {
+    @ObservedObject private var model = UsageModel.shared
     @State private var status: UNAuthorizationStatus = .notDetermined
     @AppStorage("thresholds") private var thresholds = "75,80,90"
     @AppStorage("notifySoon") private var soon = true
@@ -643,7 +688,9 @@ struct NotificationsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SettingsSection("Notify me when") {
+            SettingsSection("Notify me when",
+                            footer: model.activeIsFree ? "Limit alerts need a Pro or Max plan. Your choices are kept for when they do." : nil) {
+                Group {
                 SettingsRow("Any limit reaches") {
                     HStack(spacing: 5) {
                         ForEach(Prefs.allThresholdChips, id: \.self) { t in
@@ -661,6 +708,8 @@ struct NotificationsTab: View {
                 }
                 RowDivider()
                 SettingsRow("A limit resets") { BrandSwitch(label: "A limit resets", isOn: $notifyReset) }
+                }
+                .disabled(model.activeIsFree)
                 RowDivider()
                 SettingsRow("Anthropic reports an outage") {
                     BrandSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)

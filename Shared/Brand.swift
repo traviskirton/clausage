@@ -115,6 +115,24 @@ struct Tally: View {
     }
 }
 
+/// The empty tally: four faint strokes and no slash. Marks the Free plan state, where there's nothing to count.
+struct EmptyTally: View {
+    var size: CGFloat
+    var body: some View {
+        Tally(size: size, filled: 0, empty: Color("Ink").opacity(0.18)).accessibilityHidden(true)
+    }
+}
+
+/// Copy for the Free plan state (claude.ai has no usage page on Free), shared by both apps and the widgets.
+enum FreePlanCopy {
+    static let headline = "Nothing on the plate yet"
+    static let bodyScreen = "claude.ai only shows usage on Pro and Max plans, so on Free there’s nothing for Clausage to count."
+    static let bodyShort = "claude.ai only shows usage on Pro and Max plans."
+    static let widgetLine = "Clausage needs a Claude Pro or Max plan."
+    static let widgetSub = "Needs Pro or Max"
+    static let switchAccount = "Use another account"
+}
+
 /// Tally strokes counting up one at a time (0→4, then again), for loading states.
 struct TallyLoader: View {
     var size: CGFloat

@@ -43,6 +43,8 @@ final class UsageModel: ObservableObject {
     var updated: Date? { active.flatMap { states[$0.id]?.updated } }
     var error: String? { active.flatMap { states[$0.id]?.error } ?? generalError }
     var activeSignedOut: Bool { active.flatMap { states[$0.id]?.signedOut } ?? false }
+    /// The shown account is on Free: claude.ai has no usage page, so the Free state replaces the bars.
+    var activeIsFree: Bool { activeState?.plan?.isFree == true && !activeSignedOut }
 
     private init() {
         Prefs.register()
@@ -54,6 +56,12 @@ final class UsageModel: ObservableObject {
             accounts = [a]; activeID = a.id
             var st = AccountState(limits: s.limits, error: nil, updated: s.updated, signedOut: false)
             st.plan = s.plan; st.breakdown = s.breakdown; st.weekly = s.weekly
+            if CommandLine.arguments.contains("--demo-free") {
+                // The Free plan state: no usage page, nothing to count.
+                accounts[0].name = "travis@postfl.com"
+                st = AccountState(limits: [], error: nil, updated: s.updated, signedOut: false)
+                st.plan = Plan(badge: "Free", orgName: nil)
+            }
             states[a.id] = st
             if let i = CommandLine.arguments.firstIndex(of: "--render-gallery"), i + 1 < CommandLine.arguments.count {
                 let dir = CommandLine.arguments[i + 1]
@@ -241,6 +249,12 @@ final class UsageModel: ObservableObject {
         publishSnapshot()
     }
 
+    /// "Use another account": signs this one out, then opens claude.ai sign-in for a new one.
+    func switchAccount(from account: Account) {
+        disconnect(account)
+        connect()
+    }
+
     func setLaunchAtLogin(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
@@ -266,8 +280,10 @@ final class UsageModel: ObservableObject {
                 let previous = states[account.id]
                 do {
                     var plan = previous?.plan, planFetched = previous?.planFetched
-                    // The org list carries the plan tier: read it at sign-in, then at most daily.
-                    if account.orgID == nil || planFetched.map({ Date().timeIntervalSince($0) > 86_400 }) ?? true {
+                    // The org list carries the plan tier: read it at sign-in, then at most daily. While Free, read it on
+                    // every refresh, so an upgrade shows up right away.
+                    if account.orgID == nil || plan?.isFree == true || userInitiated
+                        || planFetched.map({ Date().timeIntervalSince($0) > 86_400 }) ?? true {
                         let org = try await UsageClient.resolveOrg(s)
                         plan = org.plan; planFetched = Date()
                         if account.orgID == nil {
@@ -275,6 +291,13 @@ final class UsageModel: ObservableObject {
                             if let i = accounts.firstIndex(where: { $0.id == account.id }) { accounts[i].orgID = org.id }
                             saveAccounts()
                         }
+                    }
+                    if plan?.isFree == true {
+                        // Free has no usage page: nothing to count. History already on this Mac stays as it is.
+                        var st = AccountState(limits: [], error: nil, updated: Date(), signedOut: false)
+                        st.plan = plan; st.planFetched = planFetched
+                        results.append((account.id, st))
+                        continue
                     }
                     let report = try await UsageClient.fetch(session: s, orgID: account.orgID!)
                     if let w = report.weekly {
@@ -290,10 +313,17 @@ final class UsageModel: ObservableObject {
                     st.credits = previous?.credits
                     results.append((account.id, st))
                 } catch {
-                    allOK = false
                     var st = states[account.id] ?? AccountState()
+                    if case UsageError.unauthorized = error {
+                        st.signedOut = true
+                    } else if st.plan?.isFree == true {
+                        // A Free account never shows "Couldn't update": it keeps the Free state and checks again later.
+                        st.updated = Date()
+                        results.append((account.id, st))
+                        continue
+                    }
+                    allOK = false
                     st.error = error.localizedDescription
-                    if case UsageError.unauthorized = error { st.signedOut = true }
                     results.append((account.id, st))
                 }
             }

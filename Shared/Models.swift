@@ -22,6 +22,9 @@ struct Plan: Codable, Equatable {
     /// Shown under the badge on Team and Enterprise, so you know which org you're in.
     let orgName: String?
 
+    /// claude.ai has no usage page on Free, so there's nothing to count: the apps show the Free state instead of bars.
+    var isFree: Bool { badge == "Free" }
+
     static func from(tier: String?, capabilities: [String], ravenType: String?, orgName: String) -> Plan? {
         let tier = tier?.lowercased() ?? ""
         let caps = Set(capabilities.map { $0.lowercased() })
@@ -167,6 +170,9 @@ enum SharedStore {
     }
 
     static var defaults: UserDefaults { UserDefaults(suiteName: groupID) ?? .standard }
+
+    /// The account is signed in on a Free plan (no usage to show).
+    static func isFree(_ s: Snapshot?) -> Bool { s?.connected == true && s?.plan?.isFree == true }
 
     static func save(_ snapshot: Snapshot) {
         let enc = JSONEncoder()

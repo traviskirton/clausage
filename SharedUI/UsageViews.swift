@@ -194,6 +194,8 @@ struct UsageContent: View {
     var body: some View {
         if let s = snapshot, s.cleared == true {
             SignInPrompt(text: "No data")
+        } else if SharedStore.isFree(snapshot) {
+            FreeWidgetContent(size: size)
         } else if let s = snapshot, s.connected, !s.limits.isEmpty {
             filled(s)
         } else if let s = snapshot, s.connected {
@@ -290,9 +292,65 @@ struct UsageContent: View {
     }
 }
 
+/// Free plan: no bars. Small: the empty tally, headline and "Needs Pro or Max". Medium and large: the brand header with
+/// "Free", then the headline and one line.
+struct FreeWidgetContent: View {
+    let size: UsageSize
+    @Environment(\.usageStyle) private var style
+
+    var body: some View {
+        Group {
+            if size == .small {
+                VStack(alignment: .leading, spacing: 0) {
+                    EmptyTally(size: 44).padding(.leading, -8).padding(.top, -6)
+                    Spacer(minLength: 6)
+                    Text(FreePlanCopy.headline).font(.clausageDisplay(17)).brandTracking(-0.03, size: 17)
+                        .foregroundStyle(UsageColor.ink(style)).fixedSize(horizontal: false, vertical: true)
+                    Text(FreePlanCopy.widgetSub).font(.system(size: 12)).foregroundStyle(UsageColor.ink2(style)).padding(.top, 3)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 6) {
+                        BrandMark(size: 18, ink: style == .full ? Color("Ink") : .primary, ember: style == .full ? Color("Ember") : .primary)
+                        Text("clausage").font(.clausageDisplay(14)).brandTracking(-0.035, size: 14).foregroundStyle(UsageColor.ink(style))
+                        Spacer(minLength: 6)
+                        Text("Free").font(.system(size: 11, weight: .semibold)).foregroundStyle(UsageColor.ink2(style))
+                    }
+                    Spacer(minLength: 8)
+                    if size == .large { EmptyTally(size: 56).padding(.leading, -10).padding(.bottom, 6) }
+                    Text(FreePlanCopy.headline).font(.clausageDisplay(20)).brandTracking(-0.03, size: 20)
+                        .foregroundStyle(UsageColor.ink(style))
+                    Text(FreePlanCopy.widgetLine).font(.system(size: 13)).foregroundStyle(UsageColor.ink2(style)).padding(.top, 4)
+                    if size == .large { Spacer(minLength: 8) }
+                }
+            }
+        }
+        .lineLimit(2).minimumScaleFactor(0.85)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 // MARK: Lock Screen
 
 #if os(iOS)
+/// Free plan Lock Screen gauge: an empty ring, "–" and "FREE".
+struct FreeGauge: View {
+    var plainBackground = false
+    var body: some View {
+        ZStack {
+            if plainBackground { Circle().fill(Color.white.opacity(0.14)) } else { AccessoryWidgetBackground() }
+            Circle().inset(by: 2.5).stroke(Color.white.opacity(0.30), lineWidth: 5).padding(4)
+            VStack(spacing: 0) {
+                Text("–").font(.system(size: 18, weight: .bold))
+                Text("FREE").font(.system(size: 9, weight: .semibold)).opacity(0.75)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Free plan. Clausage needs a Claude Pro or Max plan.")
+    }
+}
+
 struct UsageGauge: View {
     let limit: UsageLimit
     var stale = false
@@ -343,6 +401,8 @@ struct UsageGauge: View {
 /// Inline Lock Screen text: the most pressing limit, `Session 96% · Out ~11:20 AM`.
 enum UsageInline {
     static func text(_ s: SharedStore.Snapshot?, now: Date) -> String {
+        // Free: leave the line above the clock to iOS.
+        if SharedStore.isFree(s) { return "" }
         guard let s, s.connected, let l = Forecast.mostPressing(DisplayPrefs.visible(s.limits)) else { return "Open the app to sign in" }
         let head = "\(Forecast.shortName(l)) \(Int(l.percent.rounded()))%"
         guard let tail = Forecast.forecastText(l, now: now) ?? Forecast.resetText(l) else { return head }

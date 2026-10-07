@@ -55,7 +55,7 @@ final class PhoneModel: ObservableObject {
         #if DEBUG
         demo = CommandLine.arguments.contains("--demo")
         if demo {
-            let s = UsageFixtures.screen
+            let s = CommandLine.arguments.contains("--demo-free") ? UsageFixtures.free : UsageFixtures.screen
             snapshot = s
             history = UsageFixtures.history(for: s, values: [10, 24, 38, 50, 58, 70])
             signedIn = true

@@ -27,11 +27,12 @@ enum BrandMenu {
         return menu
     }
 
-    /// Refresh ⌘R · Open claude.ai Usage · Settings… ⌘, · Quit Clausage ⌘Q.
+    /// Refresh ⌘R · Open claude.ai Usage · Settings… ⌘, · Quit Clausage ⌘Q. On Free there's no claude.ai Usage page,
+    /// so that item goes.
     static func standard(model: UsageModel) -> NSMenu {
-        make([
-            Item(title: "Refresh", key: "r") { model.refresh(userInitiated: true) },
-            Item(title: "Open claude.ai Usage") { NSWorkspace.shared.open(URL(string: "https://claude.ai/settings/usage")!) },
+        let usagePage: [Item?] = model.activeIsFree ? [] : [
+            Item(title: "Open claude.ai Usage") { NSWorkspace.shared.open(URL(string: "https://claude.ai/settings/usage")!) }]
+        return make([Item(title: "Refresh", key: "r") { model.refresh(userInitiated: true) }] + usagePage + [
             nil,
             Item(title: "Settings…", key: ",") { model.closePopover(); SettingsWindow.shared.show() },
             nil,

@@ -25,13 +25,17 @@ enum MenuBarIcon {
 
     /// `darkMenubar` only matters when the image can't be a template (a tinted percent, or Fill with a pinned base):
     /// white rays on a dark menubar, near-black on a light one. `pinnedBase` is "Fill logo base" set to White or Dark.
+    /// `free`: a Free plan has nothing to count, so every display mode shows the empty icon (all rays at glass
+    /// opacity, no number, no bars). The saved mode is untouched and applies again once there's usage.
     static func image(display: MenuDisplay, limits: [UsageLimit], tint: Bool, darkMenubar: Bool = true,
-                      pinnedBase: Bool = false) -> NSImage {
+                      pinnedBase: Bool = false, free: Bool = false) -> NSImage {
+        let display = free ? .off : display
+        let limits = free ? [] : limits
         let top = highest(limits)
         let session = limits.first { $0.kind == "session" }
         let weekly = limits.first { $0.kind == "weekly_all" }
         let fills = display == .fill || display == .percent
-        let lit = fills ? raysFilled(top?.percent ?? 0) : 12
+        let lit = free ? 0 : (fills ? raysFilled(top?.percent ?? 0) : 12)
         let pressure = (display == .percent && tint) ? pressureColor(limits) : nil
         let template = pressure == nil && !(display == .fill && pinnedBase)
         let base: NSColor = template ? .black : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1))
@@ -86,7 +90,7 @@ enum MenuBarIcon {
             return true
         }
         img.isTemplate = template
-        img.accessibilityDescription = top.map { "Clausage, \(Forecast.shortName($0)) \(Int($0.percent.rounded())) percent" } ?? "Clausage"
+        img.accessibilityDescription = free ? "Clausage, Free plan" : top.map { "Clausage, \(Forecast.shortName($0)) \(Int($0.percent.rounded())) percent" } ?? "Clausage"
         return img
     }
 }

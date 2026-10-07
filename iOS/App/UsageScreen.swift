@@ -18,7 +18,9 @@ struct UsageScreen: View {
         NavigationStack {
             ZStack(alignment: .top) {
                 ScreenBackground()
-                if model.signedIn {
+                if model.signedIn, SharedStore.isFree(model.snapshot) {
+                    freeScreen
+                } else if model.signedIn {
                     main
                 } else {
                     WelcomeScreen(message: model.message) { showSignIn = true }
@@ -95,6 +97,75 @@ struct UsageScreen: View {
         }
         .overlay(alignment: .top) { statusScrim }
         .overlay(alignment: .top) { pullIndicator }
+        .overlay(alignment: .topTrailing) { gear }
+    }
+
+    // MARK: Free plan
+
+    /// Free plan: claude.ai has no usage page, so the empty tally, one sentence of why and one way forward.
+    /// Pull to refresh rechecks the plan; an upgrade switches straight to the Usage screen.
+    private var freeScreen: some View {
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 72)
+                    VStack(spacing: 0) {
+                        EmptyTally(size: 120)
+                        VStack(spacing: 12) {
+                            Text(FreePlanCopy.headline + ".")
+                                .font(.clausageDisplay(32)).brandTracking(-0.035, size: 32)
+                                .foregroundStyle(Color("Ink"))
+                            Text(FreePlanCopy.bodyScreen)
+                                .font(.system(size: 16)).lineSpacing(4)
+                                .foregroundStyle(Color("Ink2"))
+                                .frame(maxWidth: 300)
+                        }
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityElement(children: .combine)
+                        .padding(.top, 28)
+                        if let who = model.who {
+                            (Text(who) + Text("  Free").fontWeight(.semibold))
+                                .font(.system(size: 13)).foregroundStyle(Color("Ink"))
+                                .lineLimit(1).truncationMode(.middle)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(Color("Sand2"), in: Capsule())
+                                .padding(.top, 18)
+                                .accessibilityLabel("\(who), Free plan")
+                        }
+                    }
+                    Spacer(minLength: 40)
+                    VStack(spacing: 14) {
+                        Button {
+                            Task { await model.signOut(); showSignIn = true }
+                        } label: {
+                            Text(FreePlanCopy.switchAccount)
+                                .font(.system(size: 17, weight: .semibold)).foregroundStyle(Color("Paper"))
+                                .frame(maxWidth: .infinity).frame(height: 52)
+                                .background(Color("Ink"), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        Text("Upgraded? Pull down to check again.")
+                            .font(.system(size: 13)).foregroundStyle(Color("Ink3"))
+                    }
+                    .padding(.bottom, 24)
+                }
+                .padding(.horizontal, 24)
+                .frame(minHeight: geo.size.height)
+            }
+            .scrollIndicators(.hidden)
+            .refreshable { await model.refresh() }
+        }
+        .overlay(alignment: .top) {
+            if model.refreshing {
+                VStack(spacing: 4) {
+                    TallyLoader(size: 30)
+                    Text("Checking…").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+                }
+                .padding(.top, 50)
+                .accessibilityHidden(true)
+            }
+        }
         .overlay(alignment: .topTrailing) { gear }
     }
 

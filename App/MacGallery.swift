@@ -22,7 +22,7 @@ enum MacGallery {
                                                   percent: $0.kind == "session" ? pct : min($0.percent, pct), resetsAt: $0.resetsAt,
                                                   severity: $0.severity, isActive: $0.isActive) }
             for mode in MenuDisplay.allCases {
-                row.append(MenuBarIcon.image(display: mode, limits: l, tint: true, darkMenubar: false))
+                row.append(MenuBarIcon.image(display: mode, limits: l, tint: true, darkMenubar: false, free: model.activeIsFree))
             }
         }
         writeIcons(row, columns: MenuDisplay.allCases.count, to: "\(dir)/menubar.png")

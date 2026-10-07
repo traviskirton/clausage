@@ -60,6 +60,7 @@ p { margin: 0; }
 .title { font: 600 14px/1.2 var(--sans); color: var(--ink); }
 .small { font: 400 14px/1.45 var(--sans); color: var(--muted); text-wrap: pretty; }
 .fine { font: 400 13px/1.4 var(--sans); color: var(--muted); }
+.fine-strong { font-weight: 600; color: var(--body); }
 
 /* Brand */
 
