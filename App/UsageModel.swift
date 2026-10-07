@@ -90,6 +90,27 @@ final class UsageModel: ObservableObject {
         }
         activeID = UserDefaults.standard.string(forKey: "activeAccount").flatMap(UUID.init) ?? accounts.first?.id
 
+        #if DEBUG
+        // `--dump-usage <file>`: writes claude.ai's raw organizations + usage responses for every account, then quits.
+        // For diagnosing plans whose responses don't parse. The file must be inside the app's container (sandbox).
+        if let i = CommandLine.arguments.firstIndex(of: "--dump-usage"), i + 1 < CommandLine.arguments.count {
+            let file = CommandLine.arguments[i + 1]
+            Task { @MainActor in
+                var out = ""
+                for a in self.accounts {
+                    let s = self.session(for: a.id)
+                    for path in ["/api/organizations", "/api/organizations/\(a.orgID ?? "")/usage"] {
+                        let r = try? await s.get(path)
+                        out += "== \(a.name) \(path) → HTTP \(r?.status ?? -1)\n\(r?.body ?? "request failed")\n\n"
+                    }
+                }
+                try? out.write(toFile: file, atomically: true, encoding: .utf8)
+                exit(0)
+            }
+            return
+        }
+        #endif
+
         Notifier.setup()
         StatusMenu.shared.install()
         Hotkey.install { [weak self] in Task { @MainActor in self?.openPopover() } }
