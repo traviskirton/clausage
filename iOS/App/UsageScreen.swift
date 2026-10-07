@@ -245,9 +245,9 @@ struct UsageScreen: View {
                 .font(.system(size: 19, weight: .regular))
                 .foregroundStyle(Color("Ink"))
                 .frame(width: 44, height: 44)
-                .modifier(GlassCircle())
+                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .modifier(GlassCircleButton())
         .padding(.trailing, 16)
         .padding(.top, 6)
         .accessibilityLabel("Settings")
@@ -302,13 +302,22 @@ struct ScreenBackground: View {
     }
 }
 
-/// A 44pt glass circle on iOS 26, a material circle before that.
-struct GlassCircle: ViewModifier {
+/// A glass circle button on iOS 26, a material circle before that. On 26 this is the system glass button style, not
+/// `.glassEffect(.interactive())` on the label: the interactive glass took the touch for its bounce and the tap often never fired.
+struct GlassCircleButton: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: Circle())
+            content.buttonStyle(.glass).buttonBorderShape(.circle)
         } else {
-            content.background(.ultraThinMaterial, in: Circle())
+            content.buttonStyle(MaterialCircle())
         }
+    }
+}
+
+private struct MaterialCircle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(.ultraThinMaterial, in: Circle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
