@@ -248,6 +248,8 @@ struct UsageScreen: View {
                 .modifier(GlassCircle())
         }
         .buttonStyle(.plain)
+        // The interactive glass's own gesture often wins over the Button's tap; this tap fires alongside it.
+        .simultaneousGesture(TapGesture().onEnded { showSettings = true })
         .padding(.trailing, 16)
         .padding(.top, 6)
         .accessibilityLabel("Settings")
