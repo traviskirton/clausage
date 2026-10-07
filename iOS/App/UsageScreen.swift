@@ -23,7 +23,8 @@ struct UsageScreen: View {
                 } else if model.signedIn {
                     main
                 } else {
-                    WelcomeScreen(message: model.message) { showSignIn = true }
+                    WelcomeScreen(message: model.message, onSignIn: { showSignIn = true },
+                                  onSample: { model.startSample() })
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -45,6 +46,8 @@ struct UsageScreen: View {
             let args = CommandLine.arguments
             if let i = args.firstIndex(of: "--demo-open"), i + 1 < args.count { debugScreen = args[i + 1] }
             if args.contains("--demo-welcome") { model.signedIn = false }
+            // `--sample <id>`: start sample mode on a scenario, the same path as "Try it with sample data".
+            if let i = args.firstIndex(of: "--sample"), i + 1 < args.count { model.startSample(args[i + 1]) }
             #endif
             GalleryLauncher.runIfRequested()
             await model.refresh()
@@ -67,6 +70,9 @@ struct UsageScreen: View {
                 Color.clear.frame(height: 58)        // room for the gear, which stays put
                 UsageHeader(plan: snap?.plan)
                     .padding(.bottom, 26)
+                if let sample = SampleData.scenario(snap?.sample) {
+                    SampleBanner(scenario: sample) { model.stopSample() }.padding(.bottom, 24)
+                }
 
                 if let s = snap, s.connected, s.cleared != true {
                     content(s, now: now)
@@ -108,6 +114,9 @@ struct UsageScreen: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
+                    if let sample = SampleData.scenario(model.snapshot?.sample) {
+                        SampleBanner(scenario: sample) { model.stopSample() }.padding(.top, 62)
+                    }
                     Spacer(minLength: 72)
                     VStack(spacing: 0) {
                         EmptyTally(size: 120)

@@ -173,3 +173,27 @@ struct CreditsCard: View {
         }
     }
 }
+
+/// Sample mode marker at the top of the Usage and Free screens, so sample numbers are never taken for a real account.
+struct SampleBanner: View {
+    let scenario: SampleData.Scenario
+    let onExit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Sample data").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color("Ink"))
+                Text("\(scenario.name). Not a real account.").font(.system(size: 13)).foregroundStyle(Color("Ink2"))
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 8)
+            Button("Exit", action: onExit)
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Color("Ink"))
+                .padding(.horizontal, 12).frame(minHeight: 32)
+                .background(Color("Paper"), in: Capsule())
+                .accessibilityLabel("Exit sample mode")
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(Color("Sand2"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}

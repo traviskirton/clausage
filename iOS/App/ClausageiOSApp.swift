@@ -41,7 +41,7 @@ struct ClausageiOSApp: App {
 final class PhoneModel: ObservableObject {
     @Published var snapshot: SharedStore.Snapshot? = SharedStore.load()
     @Published var history = HistoryStore.load()
-    @Published var signedIn = SessionStore.load() != nil
+    @Published var signedIn = SessionStore.load() != nil || SampleMode.isOn
     @Published var account = SessionStore.load()?.orgName
     @Published var message: String?
     @Published var refreshing = false
@@ -82,6 +82,16 @@ final class PhoneModel: ObservableObject {
             refreshing = false
             return true
         }
+        if SampleMode.isOn {
+            refreshing = true
+            try? await Task.sleep(for: .milliseconds(600))
+            SampleMode.refresh()
+            refreshing = false
+            message = nil; lastResult = "sample"
+            sync()
+            WidgetCenter.shared.reloadAllTimelines()
+            return true
+        }
         guard SessionStore.load() != nil else { sync(); return false }
         refreshing = true
         defer { refreshing = false }
@@ -95,6 +105,20 @@ final class PhoneModel: ObservableObject {
         await PhoneNotifier.process()
         WidgetCenter.shared.reloadAllTimelines()
         return ok
+    }
+
+    /// Sample mode, from the welcome screen or Settings: a `SampleData` scenario instead of an account.
+    func startSample(_ id: String = SampleData.maxMixed.id) {
+        SampleMode.start(id)
+        message = nil
+        sync()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func stopSample() {
+        SampleMode.stop()
+        sync()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func signOut() async {
@@ -131,7 +155,7 @@ final class PhoneModel: ObservableObject {
     func sync() {
         guard !demo else { return }
         let record = SessionStore.load()
-        signedIn = record != nil
+        signedIn = record != nil || SampleMode.isOn
         account = record?.orgName
         snapshot = SharedStore.load()
         history = HistoryStore.load()

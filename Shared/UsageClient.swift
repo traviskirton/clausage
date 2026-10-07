@@ -32,9 +32,16 @@ enum UsageClient {
         if status == 401 || status == 403 { throw UsageError.unauthorized }
         guard status == 200,
               let orgs = try? JSONSerialization.jsonObject(with: Data(body.utf8)) as? [[String: Any]],
-              let org = orgs.first(where: { ($0["capabilities"] as? [String])?.contains("chat") == true }) ?? orgs.first,
-              let id = org["uuid"] as? String
+              let org = org(from: orgs)
         else { throw UsageError.unexpected(String(body.prefix(120))) }
+        return org
+    }
+
+    /// The chat org from an `/api/organizations` response, with its plan.
+    static func org(from orgs: [[String: Any]]) -> Org? {
+        guard let org = orgs.first(where: { ($0["capabilities"] as? [String])?.contains("chat") == true }) ?? orgs.first,
+              let id = org["uuid"] as? String
+        else { return nil }
         var name = (org["name"] as? String) ?? "Claude"
         for suffix in ["'s Organization", "’s Organization"] where name.hasSuffix(suffix) {
             name = String(name.dropLast(suffix.count))

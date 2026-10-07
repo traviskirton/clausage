@@ -32,6 +32,21 @@ struct SettingsScreen: View {
                 .listRowBackground(Color.clear)
             }
 
+            if let sample = model.snapshot?.sample {
+                Section {
+                    Picker("Scenario", selection: Binding(get: { sample }, set: { model.startSample($0) })) {
+                        ForEach(SampleData.pickable) { Text($0.name).tag($0.id) }
+                    }
+                    .listRowBackground(Color("Cell"))
+                    Button("Exit Sample Mode", role: .destructive) { model.stopSample(); dismiss() }
+                        .foregroundStyle(Color("CriticalText"))
+                        .listRowBackground(Color("Cell"))
+                } header: {
+                    SectionTitle("Sample data")
+                } footer: {
+                    Text("Made-up numbers that show how Clausage works, with nothing from a real account. Exit to sign in with yours.")
+                }
+            } else {
             Section {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -48,6 +63,7 @@ struct SettingsScreen: View {
                 }
                 .foregroundStyle(Color("CriticalText"))
             } header: { SectionTitle("Account") }
+            }
 
             Section {
                 // Free: nothing to alert on. Disabled (not just faded); saved choices are kept for later.

@@ -38,7 +38,8 @@ enum PhoneNotifier {
     /// Threshold (85% / 95%) and runout alerts fire when a refresh sees a new crossing in a window; reset alerts are
     /// scheduled for the reset time. On the very first run, what's already crossed is recorded without alerting.
     static func process(now: Date = Date()) async {
-        guard let s = SharedStore.load(), s.connected else { return }
+        // No alerts from sample data: it isn't anyone's real usage.
+        guard let s = SharedStore.load(), s.connected, s.sample == nil else { return }
         let limits = DisplayPrefs.visible(s.limits)
         var fired = Set(d.stringArray(forKey: "notifyFired") ?? [])
         let seeded = d.bool(forKey: "notifySeeded")

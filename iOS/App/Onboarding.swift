@@ -21,6 +21,8 @@ struct AppIconView: View {
 struct WelcomeScreen: View {
     let message: String?
     let onSignIn: () -> Void
+    /// "Try it with sample data": every screen and widget without an account (also how App Review sees the app).
+    var onSample: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,6 +48,12 @@ struct WelcomeScreen: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
+            if let onSample {
+                Button("Try it with sample data", action: onSample)
+                    .font(.system(size: 15, weight: .medium)).foregroundStyle(Color("Ink"))
+                    .frame(minHeight: 44)
+                    .padding(.top, 6)
+            }
             (Text("For Claude Pro and Max plans. ").fontWeight(.semibold).foregroundStyle(Color("Ink").opacity(0.82))
              + Text("You sign in on claude.ai. Clausage never sees your password and isn’t made by Anthropic."))
                 .font(.system(size: 12)).foregroundStyle(Color("Ink3"))

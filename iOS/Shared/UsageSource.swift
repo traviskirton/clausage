@@ -15,6 +15,7 @@ enum UsageSource {
     /// A network or server error keeps the last snapshot (it just gets older); a real sign-out clears the session.
     @MainActor
     static func refresh() async -> Outcome {
+        if SampleMode.isOn { SampleMode.refresh(); return .ok }
         guard let record = SessionStore.load() else {
             markSignedOut()
             return .signedOut

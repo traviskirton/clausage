@@ -167,6 +167,8 @@ enum SharedStore {
         var unparsedLimits: [String]? = nil
         /// Privacy → Clear Cached Usage: widgets show "No data" until the next refresh.
         var cleared: Bool? = nil
+        /// Sample mode: the `SampleData` scenario id. Nothing here came from a real account.
+        var sample: String? = nil
     }
 
     static var defaults: UserDefaults { UserDefaults(suiteName: groupID) ?? .standard }
