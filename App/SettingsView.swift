@@ -104,7 +104,7 @@ struct SettingsView: View {
         .background(SettingsColor.window)
         .tint(SettingsColor.ember)
         .buttonStyle(SoftButtonStyle())
-        .focusEffectDisabled()      // the focus ring is the system accent
+        .focusEffectDisabledCompat()      // the focus ring is the system accent
         .frame(maxWidth: .infinity, maxHeight: .infinity)      // the window sets the size (760 × 600); a fixed size here makes SwiftUI add the title bar to it
         .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
@@ -460,7 +460,9 @@ struct AccountsTab: View {
     var body: some View {
         SettingsSection("Claude accounts",
                         footer: (anyFree ? "claude.ai doesn’t show usage on the Free plan, so there’s nothing to count. Clausage checks again on every refresh and starts counting as soon as there’s usage. " : "")
-                            + "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one.") {
+                            + (ClaudeSession.supportsMultipleAccounts
+                               ? "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one."
+                               : "Your session stays on this Mac and is only used to read plan usage from claude.ai. On macOS 13 Clausage keeps one account at a time.")) {
             if model.accounts.isEmpty {
                 SettingsRow("Not connected", detail: "Sign in to see your plan usage.") {
                     Button("Connect…") { model.connect() }
@@ -474,7 +476,7 @@ struct AccountsTab: View {
                         HStack {
                             if st?.signedOut == true { Button("Sign in…") { model.reconnect(a) } }
                             else if a.id != model.active?.id { Button("Show") { model.setActive(a.id) } }
-                            if st?.plan?.isFree == true, st?.signedOut != true {
+                            if ClaudeSession.supportsMultipleAccounts, st?.plan?.isFree == true, st?.signedOut != true {
                                 Button("Switch…") { model.switchAccount(from: a) }
                                     .help("Use another account: signs this one out, then opens claude.ai sign-in.")
                             }
@@ -483,7 +485,14 @@ struct AccountsTab: View {
                     }
                 }
                 RowDivider()
-                SettingsRow("Add another account") { Button("Add account…") { model.connect() } }
+                if ClaudeSession.supportsMultipleAccounts {
+                    SettingsRow("Add another account") { Button("Add account…") { model.connect() } }
+                } else {
+                    // macOS 13: one account (one shared cookie store), so another sign-in replaces it.
+                    SettingsRow("Use another account", detail: "Signs out, then opens claude.ai sign-in.") {
+                        Button("Switch…") { model.connect() }
+                    }
+                }
             }
         }
     }
@@ -713,7 +722,7 @@ struct NotificationsTab: View {
                 RowDivider()
                 SettingsRow("Anthropic reports an outage") {
                     BrandSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)
-                        .onChange(of: notifyOutage) { _, on in
+                        .onChangeCompat(of: notifyOutage) { on in
                             if on { Task { await Notifier.requestAuthorization(); await StatusMonitor.check() } }
                         }
                 }

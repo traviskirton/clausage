@@ -69,7 +69,7 @@ No analytics, no ads, no tracking. The full policy is at [clausage.ai/privacy](h
 
 **Requires a Claude Pro or Max plan.** Free plans don't have a usage page on claude.ai, so Clausage has nothing to read.
 
-- **Mac** (macOS 14 or later): [download the latest version](https://clausage.ai/updates/Clausage.zip), unzip it and move Clausage to Applications. It's signed and notarized, and updates itself.
+- **Mac** (macOS 13 Ventura or later): [download the latest version](https://clausage.ai/updates/Clausage.zip), unzip it and move Clausage to Applications. It's signed and notarized, and updates itself.
 - **iPhone** (iOS 17 or later): not on the App Store yet. [Build it from source](#build-from-source).
 
 Open Clausage, sign in to Claude, and the first link drops.

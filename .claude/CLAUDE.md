@@ -54,6 +54,8 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 
 ## Gotchas
 
+- macOS 13 (Ventura) is the Mac minimum. Per-account `WKWebsiteDataStore(forIdentifier:)` is macOS 14+, so on 13 the Mac app keeps one account in the default store (`ClaudeSession.supportsMultipleAccounts`), and signing in another replaces it after the store is cleared. Other macOS 14 APIs go through `App/Compat.swift` (`onChangeCompat`, `focusEffectDisabledCompat`, `announce`) and the widget's `widgetPaperBackground()`. Debug builds don't catch every availability error; check with a Release build (`./build.sh`). The 13 path needs a Ventura machine or VM to test.
+
 - Menubar-only app: any window needs `AppActivation.push()/pop()` or it can't be reached with Cmd-Tab.
 - The "Login Item Added" banner shows the file name (`Clausage.app`); macOS controls that text.
 - Dev and release builds share a bundle ID, so `./build.sh install` overwrites the notarized copy. (Idea: a separate "Clausage Dev" bundle ID.)

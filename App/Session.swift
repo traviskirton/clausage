@@ -20,11 +20,29 @@ final class ClaudeSession: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindo
         super.init()
     }
 
-    /// Each account gets its own isolated cookie store.
+    /// macOS 14+: each account gets its own isolated, persistent cookie store, so several can be signed in.
+    /// macOS 13 has no per-identifier stores, so there's one account, in the default store.
+    static var supportsMultipleAccounts: Bool {
+        if #available(macOS 14.0, *) { return true } else { return false }
+    }
+
     private func makeConfiguration() -> WKWebViewConfiguration {
         let c = WKWebViewConfiguration()
-        c.websiteDataStore = WKWebsiteDataStore(forIdentifier: accountID)
+        if #available(macOS 14.0, *) {
+            c.websiteDataStore = WKWebsiteDataStore(forIdentifier: accountID)
+        } else {
+            c.websiteDataStore = .default()
+        }
         return c
+    }
+
+    /// Deletes an account's cookies and web data (on macOS 13, the default store, which only ever holds the one account).
+    static func removeStore(for id: UUID) async {
+        if #available(macOS 14.0, *) {
+            try? await WKWebsiteDataStore.remove(forIdentifier: id)
+        } else {
+            await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+        }
     }
 
     private lazy var apiView: WKWebView = {
@@ -132,7 +150,7 @@ final class ClaudeSession: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindo
     func signOut() async {
         pollTimer?.invalidate()
         apiLoaded = false
-        try? await WKWebsiteDataStore.remove(forIdentifier: accountID)
+        await Self.removeStore(for: accountID)
     }
 
     // MARK: API

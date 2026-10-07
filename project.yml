@@ -2,7 +2,7 @@ name: Clausage
 options:
   bundleIdPrefix: com.postfl
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "13.0"
     iOS: "17.0"
 attributes:
   LastUpgradeCheck: "2700"

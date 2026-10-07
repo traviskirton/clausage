@@ -94,7 +94,7 @@ struct UsageView: View {
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(surface))
         .background(shortcuts)
         .background(PopoverWindowStyle())
-        .onChange(of: model.outcome?.id) { _, _ in
+        .onChangeCompat(of: model.outcome?.id) { _ in
             guard let o = model.outcome else { return }
             let id = o.id
             let announcement: String
@@ -106,7 +106,7 @@ struct UsageView: View {
                 hold = RefreshHold(id: id, failed: true)
                 announcement = "Couldn't update"
             }
-            AccessibilityNotification.Announcement(announcement).post()
+            announce(announcement)
             guard let h = hold else { return }
             if !h.failed {
                 slash = 0
@@ -163,8 +163,8 @@ struct UsageView: View {
     /// "57% of this week came from Claude Code", from claude.ai's weekly split. Hidden when the field is missing.
     @ViewBuilder private var productLine: some View {
         if let top = model.activeState?.breakdown?.rows.first {
-            (Text("\(Int(top.percent.rounded()))%").font(.clausagePercent(11.5)).foregroundStyle(Color("Ink"))
-             + Text(" of this week came from \(top.name)").foregroundStyle(Color("Ink2")))
+            (Text("\(Int(top.percent.rounded()))%").font(.clausagePercent(11.5)).foregroundColor(Color("Ink"))
+             + Text(" of this week came from \(top.name)").foregroundColor(Color("Ink2")))
                 .font(.system(size: 11))
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)

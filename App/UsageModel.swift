@@ -80,7 +80,7 @@ final class UsageModel: ObservableObject {
             if let data = UserDefaults.standard.data(forKey: "accounts"),
                let old = try? JSONDecoder().decode([Account].self, from: data) {
                 for a in old {
-                    Task { try? await WKWebsiteDataStore.remove(forIdentifier: a.id) }
+                    Task { await ClaudeSession.removeStore(for: a.id) }
                     HistoryStore.clear(key: Self.historyKey(a.id))
                 }
                 HistoryStore.clear()
@@ -197,8 +197,19 @@ final class UsageModel: ObservableObject {
         return s
     }
 
-    /// Signs in a new account (a fresh, isolated web session).
+    /// Signs in a new account (a fresh, isolated web session). On macOS 13 there's only one account (one shared
+    /// cookie store), so signing in another replaces it.
     func connect() {
+        if !ClaudeSession.supportsMultipleAccounts, !accounts.isEmpty {
+            // Clear the shared store before the sign-in window loads, or claude.ai would still see the old session.
+            for a in accounts { disconnect(a, clearStore: false) }
+            Task { await ClaudeSession.removeStore(for: UUID()); self.beginSignIn() }
+            return
+        }
+        beginSignIn()
+    }
+
+    private func beginSignIn() {
         generalError = nil
         let id = UUID()
         let s = session(for: id)
@@ -209,8 +220,9 @@ final class UsageModel: ObservableObject {
                 do {
                     let org = try await UsageClient.resolveOrg(s)
                     if let dup = self.accounts.first(where: { $0.orgID == org.id }) {
-                        // Same account signed in twice: keep the original, drop the new session.
-                        await s.signOut(); self.sessions[id] = nil
+                        // Same account signed in twice: keep the original, drop the new session (its own store only).
+                        if ClaudeSession.supportsMultipleAccounts { await s.signOut() }
+                        self.sessions[id] = nil
                         self.setActive(dup.id); self.refresh(thenOpenPopover: true)
                         return
                     }
@@ -236,7 +248,7 @@ final class UsageModel: ObservableObject {
         }
     }
 
-    func disconnect(_ account: Account) {
+    func disconnect(_ account: Account, clearStore: Bool = true) {
         let s = session(for: account.id)
         sessions[account.id] = nil
         states[account.id] = nil
@@ -244,14 +256,15 @@ final class UsageModel: ObservableObject {
         accounts.removeAll { $0.id == account.id }
         if activeID == account.id { activeID = accounts.first?.id }
         saveAccounts()
-        Task { await s.signOut() }
+        if clearStore { Task { await s.signOut() } }
         if accounts.isEmpty { Notifier.cancelAll() } else { notify() }
         publishSnapshot()
     }
 
     /// "Use another account": signs this one out, then opens claude.ai sign-in for a new one.
     func switchAccount(from account: Account) {
-        disconnect(account)
+        // macOS 13: connect() clears the one shared store itself, before the sign-in window loads.
+        if ClaudeSession.supportsMultipleAccounts { disconnect(account) }
         connect()
     }
 

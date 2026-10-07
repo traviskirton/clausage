@@ -42,7 +42,19 @@ struct UsageWidgetView: View {
         // The Mac app refreshes on its own schedule, so the large widget's "Updated" isn't a button here.
         UsageContent(size: size, snapshot: entry.snapshot, history: entry.history, now: entry.date, refreshable: false)
             .environment(\.usageStyle, mode == .fullColor ? .full : .accented)
-            .containerBackground(for: .widget) { WidgetPaper() }
+            .widgetPaperBackground()
+    }
+}
+
+private extension View {
+    /// macOS 14+: the widget container background (and the system's content margins). macOS 13 has neither, so the
+    /// paper goes behind the content and the margin is added by hand.
+    @ViewBuilder func widgetPaperBackground() -> some View {
+        if #available(macOS 14.0, *) {
+            containerBackground(for: .widget) { WidgetPaper() }
+        } else {
+            padding(16).frame(maxWidth: .infinity, maxHeight: .infinity).background(WidgetPaper())
+        }
     }
 }
 
@@ -58,18 +70,4 @@ struct UsageWidget: Widget {
     }
 }
 
-#Preview("Small · Mixed", as: .systemSmall) { UsageWidget() } timeline: {
-    UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.mixed, history: UsageFixtures.history(for: UsageFixtures.mixed))
-}
-
-#Preview("Medium · All critical", as: .systemMedium) { UsageWidget() } timeline: {
-    UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.allCritical)
-}
-
-#Preview("Large · Mixed", as: .systemLarge) { UsageWidget() } timeline: {
-    UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.mixed, history: UsageFixtures.history(for: UsageFixtures.mixed))
-}
-
-#Preview("Large · Stale", as: .systemLarge) { UsageWidget() } timeline: {
-    UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.stale, history: UsageFixtures.history(for: UsageFixtures.stale))
-}
+// Widget previews need macOS 14 (the deployment target is 13); the debug gallery (`--render-gallery`) renders these states.
