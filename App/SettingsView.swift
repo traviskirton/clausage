@@ -113,6 +113,7 @@ struct SettingsView: View {
         .foregroundStyle(SettingsColor.text)
         .background(SettingsColor.window)
         .tint(SettingsColor.ember)
+        .focusEffectDisabledCompat()      // the focus ring is the system accent (not Ember); the sidebar shows selection itself
         .frame(maxWidth: .infinity, maxHeight: .infinity)      // the window sets the size (760 × 600); a fixed size here makes SwiftUI add the title bar to it
         .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
