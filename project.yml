@@ -22,7 +22,7 @@ settings:
     # iPhone app and its widgets. Follows the Mac for now; set it to the App Store Connect version (1.0) only for the
     # build submitted to App Review. Its own name, so release.sh's MARKETING_VERSION bump never touches it.
     IPHONE_VERSION: $(MARKETING_VERSION)
-    CURRENT_PROJECT_VERSION: "7"
+    CURRENT_PROJECT_VERSION: "8"
     ENABLE_HARDENED_RUNTIME: YES
     # Xcode's "recommended settings" (adopted here because the .xcodeproj is generated)
     DEAD_CODE_STRIPPING: YES
