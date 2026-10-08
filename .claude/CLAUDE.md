@@ -32,10 +32,11 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 - Work on a branch named for the next version (`0.0.2`). Commit freely there.
 - To ship, from that branch:
   1. Get the user's explicit OK. Releases put a zip and `appcast.xml` on a public host.
-  2. `./release.sh <version>` (opens a new shell if needed so `SPARKLE_KEY_FILE` is set). It bumps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archives, signs with Developer ID, notarizes via Xcode's Apple login, zips, signs the appcast, uploads over FTPS, and verifies the public URLs. First it refuses uncommitted changes, then installs and opens the previous release from `release/`, so once the new one is live, quitting and relaunching Clausage tests the Sparkle update (`--keep-installed` skips that).
-  3. The script commits the `project.yml` bump and tags `release-<version>`. Then fast-forward `main` to the branch.
-  4. Write a dev report if it was a milestone (local only: `dev-reports/` is gitignored, so skip the commit and hash-stamp steps).
-  5. Create the next branch (`<next version>`) and, in its first commit, set `MARKETING_VERSION` in `project.yml` to that version. Leave `CURRENT_PROJECT_VERSION` alone (`release.sh` adds 1). Dev builds must always show the version being worked on.
+  2. Release notes: `tools/release-notes.sh <version>` has Claude draft `release-notes/<version>.md` (Mac changes since the last `release-*` tag, house voice). Show the user the draft; only after they approve it, run `tools/release-notes.sh <version> --approve` (drops the `<!-- draft -->` line) and commit the file. `release.sh` refuses a version without approved, committed notes, then publishes `https://clausage.ai/release-notes/` (built by `tools/release-notes-page.py`; `--drafts <file>` previews) and links the appcast to it.
+  3. `./release.sh <version>` (opens a new shell if needed so `SPARKLE_KEY_FILE` is set). It bumps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archives, signs with Developer ID, notarizes via Xcode's Apple login, zips, signs the appcast, uploads over FTPS, and verifies the public URLs. First it refuses uncommitted changes, then installs and opens the previous release from `release/`, so once the new one is live, quitting and relaunching Clausage tests the Sparkle update (`--keep-installed` skips that).
+  4. The script commits the `project.yml` bump and tags `release-<version>`. Then fast-forward `main` to the branch.
+  5. Write a dev report if it was a milestone (local only: `dev-reports/` is gitignored, so skip the commit and hash-stamp steps).
+  6. Create the next branch (`<next version>`) and, in its first commit, set `MARKETING_VERSION` in `project.yml` to that version. Leave `CURRENT_PROJECT_VERSION` alone (`release.sh` adds 1). Dev builds must always show the version being worked on.
 - Hotfix: branch from the release tag, fix, ship the next number.
 - Sparkle compares the **build number**, not the version; it must increase every release (the script does this).
 

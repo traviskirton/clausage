@@ -6,6 +6,10 @@
 #   ./release.sh 1.2.0 --no-upload   do everything except upload (output in release/)
 #   ./release.sh 1.2.0 --keep-installed   leave /Applications/Clausage.app alone
 #
+# Release notes come first: tools/release-notes.sh <version> drafts release-notes/<version>.md, you approve it, and it's
+# committed. This script refuses a version without approved notes, then publishes clausage.ai/release-notes/ (built
+# from every approved file) and links the appcast to it.
+#
 # Each release doubles as an update test: before building, the previous release from release/ is installed in
 # /Applications and opened, so once this one is live, quitting and relaunching Clausage updates it through Sparkle.
 #
@@ -17,6 +21,7 @@ cd "$(dirname "$0")"
 FEED_BASE="https://clausage.ai/updates"
 # Copies released as "Claude Usage" (0.0.1–0.0.3) only ever check this feed, so it gets the same appcast.
 LEGACY_FEED_BASE="https://updates.postfl.com/claude-usage"
+NOTES_PAGE="https://clausage.ai/release-notes/"
 # Upload host, FTP accounts and Keychain services live outside git, in .claude/release.env:
 #   FTP_HOST=...               (the name on the FTP server's TLS certificate)
 #   SITE_FTP_USER=...          (rooted at the clausage.ai document root; shared with deploy-site.sh)
@@ -56,6 +61,13 @@ fi
 
 # The build is the working tree and only project.yml gets committed, so anything else uncommitted would ship unrecorded.
 git diff --quiet HEAD -- . ':!project.yml' || die "uncommitted changes; commit them first"
+
+# Approved, committed release notes for this version.
+NOTES_VER="${VERSION:-$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' project.yml | head -1)}"
+NOTES="release-notes/$NOTES_VER.md"
+[[ -f "$NOTES" ]] || die "no release notes for $NOTES_VER: run tools/release-notes.sh $NOTES_VER, approve them, commit"
+grep -q -- "<!-- draft -->" "$NOTES" && die "$NOTES is a draft: approve it (tools/release-notes.sh $NOTES_VER --approve) and commit"
+git ls-files --error-unmatch "$NOTES" >/dev/null 2>&1 || die "$NOTES isn't committed"
 
 # 0. Install and open the previous release, so this one arrives as a real Sparkle update.
 if (( UPLOAD && INSTALL_PREVIOUS )); then
@@ -110,7 +122,9 @@ echo "Releasing $VER (build $BUILD), notarized"
 mkdir -p release
 [[ -e "release/$ZIP" ]] && die "release/$ZIP already exists. Bump the version."
 ditto -c -k --sequesterRsrc --keepParent "$APP" "release/$ZIP"
-"$GEN_APPCAST" --ed-key-file "$SPARKLE_KEY_FILE" --maximum-deltas 0 --download-url-prefix "$FEED_BASE/" release/ >/dev/null
+python3 tools/release-notes-page.py >/dev/null      # site/release-notes/index.html, with this version on top
+"$GEN_APPCAST" --ed-key-file "$SPARKLE_KEY_FILE" --maximum-deltas 0 --download-url-prefix "$FEED_BASE/" \
+  --full-release-notes-url "$NOTES_PAGE" release/ >/dev/null
 [[ -s release/appcast.xml ]] || die "appcast.xml was not generated"
 grep -q "sparkle:edSignature" release/appcast.xml || die "appcast has no signature"
 echo "Signed. release/$ZIP + release/appcast.xml ready."
@@ -125,19 +139,25 @@ ftp_put() {
 }
 ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/$ZIP" "updates/$ZIP"
 ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/$ZIP" "updates/Clausage.zip"   # stable "latest" link (README, site)
+# The release notes page (with the site's cache-busting stylesheet version, as deploy-site.sh does).
+NOTES_STAGE=$(mktemp -d)
+perl -pe "s{/assets/site\.css(\?v=[0-9a-f]+)?\"}{/assets/site.css?v=$(shasum -a 256 site/assets/site.css | cut -c1-10)\"}g" \
+  site/release-notes/index.html > "$NOTES_STAGE/index.html"
+ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "$NOTES_STAGE/index.html" "release-notes/index.html"
+rm -rf "$NOTES_STAGE"
 ftp_put "$SITE_FTP_USER" "$SITE_FTP_PASS" "release/appcast.xml" "updates/appcast.xml"
 ftp_put "$FTP_USER" "$FTP_PASS" "release/appcast.xml" "appcast.xml"
 unset SITE_FTP_PASS FTP_PASS
 
 # 5. Verify what the public sees
-for url in "$FEED_BASE/$ZIP" "$FEED_BASE/Clausage.zip" "$FEED_BASE/appcast.xml" "$LEGACY_FEED_BASE/appcast.xml"; do
+for url in "$FEED_BASE/$ZIP" "$FEED_BASE/Clausage.zip" "$NOTES_PAGE" "$FEED_BASE/appcast.xml" "$LEGACY_FEED_BASE/appcast.xml"; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
   [[ "$code" == 200 ]] || die "$url returned HTTP $code"
 done
 echo "Published: $FEED_BASE/appcast.xml (and the legacy feed)"
 
 # 6. Record the release in git: commit the version bump and tag it.
-git add project.yml
+git add project.yml site/release-notes/index.html
 git diff --cached --quiet || git commit -qm "Release $VER (build $BUILD)"
 git tag -a "release-$VER" -m "Release $VER (build $BUILD)"
 echo "Tagged release-$VER on $(git branch --show-current)."
