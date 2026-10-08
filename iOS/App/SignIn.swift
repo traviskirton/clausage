@@ -26,6 +26,7 @@ struct ClaudeWebView: UIViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         context.coordinator.webView = view
+        context.coordinator.watchTaps(on: view)
         Self.store.httpCookieStore.add(context.coordinator)
         view.load(URLRequest(url: URL(string: "https://claude.ai/login")!))
         return view
@@ -42,7 +43,7 @@ struct ClaudeWebView: UIViewRepresentable {
         await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKHTTPCookieStoreObserver {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKHTTPCookieStoreObserver, UIGestureRecognizerDelegate {
         let onSignedIn: () -> Void
         let onBlocked: (URL) -> Void
         weak var webView: WKWebView?
@@ -73,8 +74,24 @@ struct ClaudeWebView: UIViewRepresentable {
 
         private func decide(_ action: WKNavigationAction) -> SignInPolicy.Decision {
             SignInPolicy.decide(action.request.url, mainFrame: action.targetFrame?.isMainFrame ?? true,
-                                userTapped: action.navigationType == .linkActivated)
+                                userTapped: action.navigationType == .linkActivated || tappedJustNow)
         }
+
+        // claude.ai's menus open links from scripts, which WebKit reports as `.other`, not `.linkActivated`. A page that
+        // opens right after a tap counts as tapped, so it goes to Safari instead of being dropped.
+        private var lastTap = Date.distantPast
+        private var tappedJustNow: Bool { Date().timeIntervalSince(lastTap) < 1.5 }
+
+        func watchTaps(on view: UIView) {
+            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+            tap.cancelsTouchesInView = false
+            tap.delegate = self
+            view.addGestureRecognizer(tap)
+        }
+
+        @objc private func tapped() { lastTap = Date() }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { Task { @MainActor in await tryComplete() } }
 
         // Google / SSO popups: a real popup view (from WebKit's configuration) laid over the sign-in page, so it keeps
@@ -97,6 +114,7 @@ struct ClaudeWebView: UIViewRepresentable {
             v.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             v.uiDelegate = self
             v.navigationDelegate = self
+            watchTaps(on: v)
             webView.addSubview(v)
             popup = v
             return v
