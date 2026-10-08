@@ -35,6 +35,7 @@ enum SettingsColor {
     static let chip = dynamic(0xE8DFCF, dark: 0xF4EDE2, 0.08)
     /// Unselected threshold chip.
     static let control = dynamic(0x26231F, 0.07, dark: 0xF4EDE2, 0.08)
+    static var textNS: NSColor { ns(0x26231F, 1, dark: 0xF4EDE2, 1) }
     static let selectedRow = dynamic(0xFF4A1C, 0.12, dark: 0xFF4A1C, 0.20)
     static let tile = dynamic(0x8A8278, dark: 0x8F867A)
     static let link = dynamic(0xC23B14, dark: 0xFF8A63)
@@ -343,6 +344,40 @@ struct SettingsMenuPicker<T: Hashable>: View {
     }
 }
 
+/// The native shortcut recorder (with its own clear button) without its bezel, whose fill is a cool system gray, on
+/// the warm control fill instead.
+struct ShortcutField: View {
+    let name: KeyboardShortcuts.Name
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        Field(name: name)
+            .frame(width: 108, height: 18)
+            .padding(.vertical, 3).padding(.leading, 10).padding(.trailing, 14)
+            .background(SettingsColor.control, in: Capsule())
+            .opacity(enabled ? 1 : 0.45)
+    }
+
+    private struct Field: NSViewRepresentable {
+        let name: KeyboardShortcuts.Name
+
+        func makeNSView(context: Context) -> KeyboardShortcuts.RecorderCocoa {
+            let r = KeyboardShortcuts.RecorderCocoa(for: name)
+            r.isBezeled = false
+            r.isBordered = false
+            r.drawsBackground = false
+            r.backgroundColor = .clear
+            r.font = .systemFont(ofSize: 12, weight: .medium)
+            r.textColor = SettingsColor.textNS
+            return r
+        }
+
+        func updateNSView(_ r: KeyboardShortcuts.RecorderCocoa, context: Context) {
+            r.shortcutName = name
+        }
+    }
+}
+
 /// Threshold chip (no native control does several-of-a-set as capsules): Ember with white text when on, a faint fill
 /// of the text color when off.
 struct ChipToggleStyle: ToggleStyle {
@@ -639,7 +674,7 @@ struct GeneralTab: View {
                 RowDivider()
                 SettingsRow("Open popover from anywhere") {
                     HStack(spacing: 8) {
-                        KeyboardShortcuts.Recorder(for: .openPopover)
+                        ShortcutField(name: .openPopover)
                         SettingsSwitch(label: "Open popover from anywhere", isOn: $hotkey)
                     }
                 }
