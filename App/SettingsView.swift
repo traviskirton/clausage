@@ -344,36 +344,90 @@ struct SettingsMenuPicker<T: Hashable>: View {
     }
 }
 
-/// The native shortcut recorder (with its own clear button) without its bezel, whose fill is a cool system gray, on
-/// the warm control fill instead.
+/// The native shortcut recorder as it ships (shape, clear button, focus ring), except for its fill: macOS 26 draws the
+/// field's bezel in a small SwiftUI host whose fill is a plain full-size layer in a cool system gray, with a layer that
+/// tints it from the wallpaper. `RecorderHost` recolors that layer warm and hides the tint, after every layout and
+/// appearance change, since the system may redraw it.
 struct ShortcutField: View {
     let name: KeyboardShortcuts.Name
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
         Field(name: name)
-            .frame(width: 108, height: 18)
-            .padding(.vertical, 3).padding(.leading, 10).padding(.trailing, 14)
-            .background(SettingsColor.control, in: Capsule())
+            .frame(width: 130)
+            .fixedSize(horizontal: false, vertical: true)
             .opacity(enabled ? 1 : 0.45)
     }
 
     private struct Field: NSViewRepresentable {
         let name: KeyboardShortcuts.Name
 
-        func makeNSView(context: Context) -> KeyboardShortcuts.RecorderCocoa {
-            let r = KeyboardShortcuts.RecorderCocoa(for: name)
-            r.isBezeled = false
-            r.isBordered = false
-            r.drawsBackground = false
-            r.backgroundColor = .clear
-            r.font = .systemFont(ofSize: 12, weight: .medium)
-            r.textColor = SettingsColor.textNS
-            return r
+        func makeNSView(context: Context) -> RecorderHost { RecorderHost(name: name) }
+
+        func updateNSView(_ host: RecorderHost, context: Context) {
+            host.recorder.shortcutName = name
+            host.recolor()
+        }
+    }
+
+    final class RecorderHost: NSView {
+        let recorder: KeyboardShortcuts.RecorderCocoa
+        /// Warm white in light mode, a faint warm tint over the group box in dark.
+        private static let fill = NSColor(name: nil) {
+            $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                ? NSColor(srgbRed: 0xF4 / 255, green: 0xED / 255, blue: 0xE2 / 255, alpha: 0.08)
+                : NSColor(srgbRed: 0xFF / 255, green: 0xFC / 255, blue: 0xF6 / 255, alpha: 1)
+        }
+        private var observers: [NSObjectProtocol] = []
+
+        init(name: KeyboardShortcuts.Name) {
+            recorder = KeyboardShortcuts.RecorderCocoa(for: name)
+            super.init(frame: .zero)
+            recorder.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(recorder)
+            NSLayoutConstraint.activate([
+                recorder.leadingAnchor.constraint(equalTo: leadingAnchor), recorder.trailingAnchor.constraint(equalTo: trailingAnchor),
+                recorder.topAnchor.constraint(equalTo: topAnchor), recorder.bottomAnchor.constraint(equalTo: bottomAnchor),
+            ])
+            // Focus, recording and key-window changes can redraw the bezel.
+            for n in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                      Notification.Name("KeyboardShortcuts_recorderActiveStatusDidChange")] {
+                observers.append(NotificationCenter.default.addObserver(forName: n, object: nil, queue: .main) { [weak self] _ in
+                    DispatchQueue.main.async { self?.recolor() }
+                })
+            }
         }
 
-        func updateNSView(_ r: KeyboardShortcuts.RecorderCocoa, context: Context) {
-            r.shortcutName = name
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+
+        override var intrinsicContentSize: NSSize { recorder.intrinsicContentSize }
+
+        override func layout() {
+            super.layout()
+            recolor()
+        }
+
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            DispatchQueue.main.async { [weak self] in self?.recolor() }
+        }
+
+        func recolor() {
+            guard let root = recorder.layer else { return }
+            let size = recorder.bounds.size
+            var fill: CGColor?
+            effectiveAppearance.performAsCurrentDrawingAppearance { fill = Self.fill.cgColor }
+            func walk(_ l: CALayer) {
+                if type(of: l) == CALayer.self, l.backgroundColor != nil, l.bounds.size == size {
+                    if l.backgroundColor != fill { l.backgroundColor = fill }
+                } else if String(describing: type(of: l)) == "CAChameleonLayer" {
+                    l.isHidden = true
+                }
+                l.sublayers?.forEach(walk)
+            }
+            walk(root)
         }
     }
 }
