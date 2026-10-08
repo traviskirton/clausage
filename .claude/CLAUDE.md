@@ -32,7 +32,7 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 - Work on a branch named for the next version (`0.0.2`). Commit freely there.
 - To ship, from that branch:
   1. Get the user's explicit OK. Releases put a zip and `appcast.xml` on a public host.
-  2. `./release.sh <version>` (opens a new shell if needed so `SPARKLE_KEY_FILE` is set). It bumps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archives, signs with Developer ID, notarizes via Xcode's Apple login, zips, signs the appcast, uploads over FTPS, and verifies the public URLs.
+  2. `./release.sh <version>` (opens a new shell if needed so `SPARKLE_KEY_FILE` is set). It bumps `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archives, signs with Developer ID, notarizes via Xcode's Apple login, zips, signs the appcast, uploads over FTPS, and verifies the public URLs. First it refuses uncommitted changes, then installs and opens the previous release from `release/`, so once the new one is live, quitting and relaunching Clausage tests the Sparkle update (`--keep-installed` skips that).
   3. The script commits the `project.yml` bump and tags `release-<version>`. Then fast-forward `main` to the branch.
   4. Write a dev report if it was a milestone (local only: `dev-reports/` is gitignored, so skip the commit and hash-stamp steps).
   5. Create the next branch (`<next version>`) and, in its first commit, set `MARKETING_VERSION` in `project.yml` to that version. Leave `CURRENT_PROJECT_VERSION` alone (`release.sh` adds 1). Dev builds must always show the version being worked on.

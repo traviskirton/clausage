@@ -4,6 +4,10 @@
 #   ./release.sh 1.2.0               bump to 1.2.0 (build number +1), build, sign, upload
 #   ./release.sh                     rebuild/publish the current version as-is
 #   ./release.sh 1.2.0 --no-upload   do everything except upload (output in release/)
+#   ./release.sh 1.2.0 --keep-installed   leave /Applications/Clausage.app alone
+#
+# Each release doubles as an update test: before building, the previous release from release/ is installed in
+# /Applications and opened, so once this one is live, quitting and relaunching Clausage updates it through Sparkle.
 #
 # Needs: SPARKLE_KEY_FILE (path to the Sparkle private key, set in ~/.zshrc), .claude/release.env, and both FTP
 # passwords in the Keychain. Uploads over explicit FTPS with full certificate checking.
@@ -25,10 +29,11 @@ GEN_APPCAST="build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast
 
 die() { echo "error: $*" >&2; exit 1; }
 
-UPLOAD=1; VERSION=""
+UPLOAD=1; VERSION=""; INSTALL_PREVIOUS=1
 for a in "$@"; do
   case "$a" in
     --no-upload) UPLOAD=0 ;;
+    --keep-installed) INSTALL_PREVIOUS=0 ;;
     [0-9]*.[0-9]*) [[ "$a" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || die "bad version '$a'"; VERSION="$a" ;;
     *) die "unknown argument '$a'" ;;
   esac
@@ -47,6 +52,21 @@ if (( UPLOAD )); then
     || die "FTP password not in Keychain (service $SITE_KEYCHAIN_SERVICE, account $SITE_FTP_USER)"
   FTP_PASS=$(security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$FTP_USER" -w 2>/dev/null) \
     || die "FTP password not in Keychain (service $KEYCHAIN_SERVICE, account $FTP_USER)"
+fi
+
+# The build is the working tree and only project.yml gets committed, so anything else uncommitted would ship unrecorded.
+git diff --quiet HEAD -- . ':!project.yml' || die "uncommitted changes; commit them first"
+
+# 0. Install and open the previous release, so this one arrives as a real Sparkle update.
+if (( UPLOAD && INSTALL_PREVIOUS )); then
+  PREV=$(ls release/Clausage-*.zip 2>/dev/null | sort -V | tail -1)
+  [[ -n "$PREV" ]] || die "no earlier release in release/ to install (use --keep-installed)"
+  pkill -x Clausage 2>/dev/null || true
+  sleep 1
+  rm -rf /Applications/Clausage.app
+  ditto -x -k "$PREV" /Applications/
+  open /Applications/Clausage.app
+  echo "Installed and opened $(basename "$PREV" .zip) for the update test."
 fi
 
 # 1. Version bump (Sparkle compares the build number, so it must always increase).
@@ -122,3 +142,6 @@ git diff --cached --quiet || git commit -qm "Release $VER (build $BUILD)"
 git tag -a "release-$VER" -m "Release $VER (build $BUILD)"
 echo "Tagged release-$VER on $(git branch --show-current)."
 echo "Next: fast-forward main to this branch, then branch for the next version."
+if (( INSTALL_PREVIOUS )); then
+  echo "Update test: quit and relaunch Clausage; about 8 seconds later it finds $VER (build $BUILD)."
+fi
