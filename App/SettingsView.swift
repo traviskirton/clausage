@@ -95,20 +95,21 @@ struct SettingsView: View {
                         header
                         AboutTab()
                     }
-                    .padding(.bottom, 20)
+                    .padding(.leading, 12).padding(.trailing, 20).padding(.bottom, 20)
                 } else {
+                    // The margins are inside the scroll view, so it runs to the window edge and its scroller sits in the
+                    // right-hand gutter rather than over the group boxes.
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             header
                             pane
                         }
-                        .padding(.bottom, 20)
+                        .padding(.leading, 12).padding(.trailing, 20).padding(.bottom, 20)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .scrollIndicators(.automatic)
                 }
             }
-            .padding(.leading, 12).padding(.trailing, 20)
         }
         .foregroundStyle(SettingsColor.text)
         .background(SettingsColor.window)
