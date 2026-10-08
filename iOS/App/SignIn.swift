@@ -17,6 +17,11 @@ struct ClaudeWebView: UIViewRepresentable {
         config.websiteDataStore = Self.store
         // Look like Mobile Safari: Google refuses to sign in inside embedded web views that don't say "Safari".
         config.applicationNameForUserAgent = "Version/18.0 Mobile/15E148 Safari/604.1"
+        // No cookie banner or Google One Tap sheet over the sign-in page.
+        let css = SignInPolicy.pageCSS.replacingOccurrences(of: "`", with: "")
+        config.userContentController.addUserScript(WKUserScript(
+            source: "(() => { const s = document.createElement('style'); s.textContent = `\(css)`; document.documentElement.appendChild(s); })();",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let view = WKWebView(frame: .zero, configuration: config)
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator

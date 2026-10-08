@@ -11,6 +11,8 @@ struct UsageScreen: View {
     @State private var restY: CGFloat?
     /// Before iOS 26: the title row has scrolled under the bar, so the bar shows "Clausage" inline.
     @State private var titleScrolledAway = false
+    /// For the iOS 26 large title, which is laid out without a width while Settings pops back (the chip jumped left).
+    @State private var screenWidth: CGFloat = 0
     @State private var slash: Double = 0
     @State private var justUpdated = false
     @State private var debugScreen: String?
@@ -29,8 +31,9 @@ struct UsageScreen: View {
                                   onSample: { model.startSample() })
                 }
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
             .modifier(UsageNavigation(signedIn: model.signedIn, titled: !SharedStore.isFree(model.snapshot),
-                                      plan: model.snapshot?.plan, inlineTitle: titleScrolledAway,
+                                      plan: model.snapshot?.plan, inlineTitle: titleScrolledAway, width: screenWidth,
                                       onSettings: { showSettings = true }))
             .navigationDestination(isPresented: $showSettings) { SettingsScreen(model: model) }
             .navigationDestination(isPresented: Binding(get: { debugScreen != nil }, set: { if !$0 { debugScreen = nil } })) {
@@ -303,6 +306,8 @@ private struct UsageNavigation: ViewModifier {
     let plan: Plan?
     /// Before iOS 26 only (iOS 26 collapses the large title itself).
     let inlineTitle: Bool
+    /// The screen's width; the large title row is pinned to it, less the 20pt side margins.
+    let width: CGFloat
     let onSettings: () -> Void
 
     static var systemTitleRow: Bool {
@@ -317,7 +322,11 @@ private struct UsageNavigation: ViewModifier {
                 .navigationTitle("Clausage")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
-                    ToolbarItem(placement: .largeTitle) { TitleRow(plan: plan).padding(.top, 14).padding(.bottom, 22) }
+                    ToolbarItem(placement: .largeTitle) {
+                        TitleRow(plan: plan)
+                            .frame(width: width > 40 ? width - 40 : nil)
+                            .padding(.top, 14).padding(.bottom, 22)
+                    }
                     gear
                 }
         } else {

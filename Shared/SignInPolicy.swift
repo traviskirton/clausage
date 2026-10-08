@@ -26,6 +26,19 @@ enum SignInPolicy {
         h.range(of: #"^accounts\.google\.(com?\.)?[a-z]{2,3}$"#, options: .regularExpression) != nil
     }
 
+    /// Google's "One Tap" sheet ("Sign in to Claude with Google · Continue"), which claude.ai's page loads on its own
+    /// in a frame from accounts.google.com/gsi/. Not the "Continue with Google" button, which goes to Google's pages.
+    static func isGoogleOneTap(_ url: URL) -> Bool {
+        url.host?.lowercased() == "accounts.google.com" && url.path.hasPrefix("/gsi/")
+    }
+
+    /// Hides claude.ai's cookie banner (no choice made means nothing beyond necessary cookies) and the empty
+    /// One Tap container. Injected into the sign-in page.
+    static let pageCSS = """
+    [data-testid="consent-banner"], #credential_picker_container, #credential_picker_iframe,
+    iframe[src*="accounts.google.com/gsi/"] { display: none !important; }
+    """
+
     /// - Parameters:
     ///   - mainFrame: a top-level page (or a sign-in popup), as opposed to a frame inside one.
     ///   - userTapped: the person tapped a link (WebKit's `.linkActivated`).
@@ -33,7 +46,10 @@ enum SignInPolicy {
         guard let url, let scheme = url.scheme?.lowercased() else { return .block }
         // Blank pages: new popups start at about:blank before they load.
         if scheme == "about" { return .allow }
-        if !mainFrame { return ["https", "about", "data", "blob"].contains(scheme) ? .allow : .block }
+        if !mainFrame {
+            if isGoogleOneTap(url) { return .block }
+            return ["https", "about", "data", "blob"].contains(scheme) ? .allow : .block
+        }
         if scheme == "https", let host = url.host, isAllowed(host: host) { return .allow }
         return userTapped ? .openOutside : .block
     }

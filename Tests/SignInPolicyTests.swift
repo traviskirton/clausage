@@ -41,4 +41,13 @@ final class SignInPolicyTests: XCTestCase {
         XCTAssertEqual(SignInPolicy.decide(URL(string: "about:srcdoc"), mainFrame: false, userTapped: false), .allow)
         XCTAssertEqual(SignInPolicy.decide(URL(string: "http://example.com/"), mainFrame: false, userTapped: false), .block)
     }
+
+    func testGoogleOneTapSheetDoesNotLoad() {
+        XCTAssertEqual(SignInPolicy.decide(URL(string: "https://accounts.google.com/gsi/iframe/select?client_id=x"),
+                                           mainFrame: false, userTapped: false), .block)
+        // The "Continue with Google" button's pages still load.
+        XCTAssertEqual(top("https://accounts.google.com/o/oauth2/v2/auth?client_id=x"), .allow)
+        XCTAssertEqual(SignInPolicy.decide(URL(string: "https://accounts.google.com/RotateCookiesPage"),
+                                           mainFrame: false, userTapped: false), .allow)
+    }
 }
