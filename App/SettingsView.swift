@@ -651,6 +651,7 @@ struct GeneralTab: View {
     @AppStorage("menuDisplay") private var display = "off"
     @AppStorage("tintIcon") private var tint = true
     @AppStorage("fillBase") private var fillBase = "auto"
+    @AppStorage("fillAccent") private var fillAccent = false
     @AppStorage("refreshMinutes") private var refresh = 5
     @AppStorage("hotkeyEnabled") private var hotkey = true
 
@@ -677,6 +678,10 @@ struct GeneralTab: View {
                         RowDivider()
                         SettingsRow("Fill logo base", detail: "White rays on a dark menu bar, dark rays on a light one. Auto follows the menu bar.") {
                             SettingsSegmented(label: "Fill logo base", selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")])
+                        }
+                        RowDivider()
+                        SettingsRow("Fill in accent color", detail: "Filled rays take your system accent color (System Settings → Appearance).") {
+                            SettingsSwitch(label: "Fill in accent color", isOn: $fillAccent)
                         }
                     }
                     .transition(.opacity)

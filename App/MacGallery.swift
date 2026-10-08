@@ -26,6 +26,13 @@ enum MacGallery {
             }
         }
         writeIcons(row, columns: MenuDisplay.allCases.count, to: "\(dir)/menubar.png")
+        // Fill in accent color, at the same levels.
+        let accent = [0.0, 30, 62, 88, 96].map { pct in
+            MenuBarIcon.image(display: .fill, limits: [UsageLimit(id: "s", kind: "session", title: "Current session", shortTitle: "Session",
+                                                                  percent: pct, resetsAt: nil, severity: "normal", isActive: nil)],
+                              tint: true, darkMenubar: false, accentFill: true)
+        }
+        writeIcons(accent, columns: accent.count, to: "\(dir)/menubar-accent.png")
 
         // Settings: real AppKit + SwiftUI views drawn offscreen, so native controls render too.
         ClaudeCodeLogs.previewAccess = true

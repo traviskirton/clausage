@@ -7,7 +7,8 @@ enum MenuDisplay: String, CaseIterable {
 /// Draws the menubar item from the 12 logo rays, always monochrome (Ember never appears in the menu bar).
 /// In Fill and Percent modes the rays fill in clockwise as the highest limit is used: rays 11, 12, 1, 2 … 10, so
 /// `round(pct / 100 × 12)` rays are filled; filled rays at 100% of the template color, empty rays at 32%.
-/// Only the percent text can take a pressure color ("Tint percent by pressure"); the icon is never tinted.
+/// Only the percent text can take a pressure color ("Tint percent by pressure"). Fill can opt into drawing its filled
+/// rays in the system accent color ("Fill in accent color"; the app's Ember when the system accent is Multicolor).
 enum MenuBarIcon {
     /// Fill order: the two upper-left rays (11 and 12), then clockwise from the top (1 … 10). Indices into `LogoRays.rays`.
     static let fillOrder = [10, 11] + Array(0...9)
@@ -28,7 +29,7 @@ enum MenuBarIcon {
     /// `free`: a Free plan has nothing to count, so every display mode shows the empty icon (all rays at glass
     /// opacity, no number, no bars). The saved mode is untouched and applies again once there's usage.
     static func image(display: MenuDisplay, limits: [UsageLimit], tint: Bool, darkMenubar: Bool = true,
-                      pinnedBase: Bool = false, free: Bool = false) -> NSImage {
+                      pinnedBase: Bool = false, accentFill: Bool = false, free: Bool = false) -> NSImage {
         let display = free ? .off : display
         let limits = free ? [] : limits
         let top = highest(limits)
@@ -37,7 +38,8 @@ enum MenuBarIcon {
         let fills = display == .fill || display == .percent
         let lit = free ? 0 : (fills ? raysFilled(top?.percent ?? 0) : 12)
         let pressure = (display == .percent && tint) ? pressureColor(limits) : nil
-        let template = pressure == nil && !(display == .fill && pinnedBase)
+        let accent = display == .fill && accentFill
+        let template = pressure == nil && !(display == .fill && (pinnedBase || accent))
         let base: NSColor = template ? .black : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1))
         let height: CGFloat = 18, logoSize: CGFloat = 16
 
@@ -66,7 +68,7 @@ enum MenuBarIcon {
                 return p
             }
             for (k, index) in fillOrder.enumerated() {
-                base.withAlphaComponent(k < lit ? 1 : 0.32).setFill()
+                (accent && k < lit ? NSColor.controlAccentColor : base.withAlphaComponent(k < lit ? 1 : 0.32)).setFill()
                 path(LogoRays.rays[index]).fill()
             }
 

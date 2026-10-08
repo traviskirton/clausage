@@ -8,6 +8,7 @@ enum Prefs {
         UserDefaults.standard.register(defaults: [
             "menuDisplay": "fill",
             "fillBase": "auto",
+            "fillAccent": false,
             "tintIcon": true,
             "thresholds": "85,95",
             "customThresholds": "",

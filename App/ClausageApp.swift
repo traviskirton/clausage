@@ -19,15 +19,20 @@ struct MenuBarLabel: View {
     @AppStorage("menuDisplay") private var display = "off"
     @AppStorage("tintIcon") private var tint = true
     @AppStorage("fillBase") private var fillBase = "auto"
+    @AppStorage("fillAccent") private var fillAccent = false
+    /// Bumped when the system accent changes, so an accent-colored Fill redraws.
+    @State private var accentChanges = 0
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        // When the percent is tinted, or Fill's base is pinned, the image can't be a template: white rays on a dark
-        // menubar, dark on a light one (Auto follows the menubar).
+        // When the percent is tinted, or Fill's base is pinned or accent-colored, the image can't be a template: white
+        // rays on a dark menubar, dark on a light one (Auto follows the menubar).
         let dark = fillBase == "white" || (fillBase == "auto" && scheme == .dark)
         return Image(nsImage: MenuBarIcon.image(display: MenuDisplay(rawValue: display) ?? .off,
                                                 limits: model.limits, tint: tint, darkMenubar: dark,
-                                                pinnedBase: fillBase != "auto", free: model.activeIsFree))
+                                                pinnedBase: fillBase != "auto", accentFill: fillAccent, free: model.activeIsFree))
+            .id(accentChanges)
+            .onReceive(NotificationCenter.default.publisher(for: NSColor.systemColorsDidChangeNotification)) { _ in accentChanges += 1 }
     }
 }
 
