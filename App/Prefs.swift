@@ -1,14 +1,15 @@
 import Foundation
 
 enum Prefs {
-    static let presetThresholds = [50, 75, 80, 90]
+    /// The chips in Notifications. The defaults (85%, 95%) match where bars turn orange and red.
+    static let presetThresholds = [50, 75, 85, 95]
 
     static func register() {
         UserDefaults.standard.register(defaults: [
             "menuDisplay": "fill",
             "fillBase": "auto",
             "tintIcon": true,
-            "thresholds": "75,80,90",
+            "thresholds": "85,95",
             "customThresholds": "",
             "notifySoon": true,
             "soonMinutes": 10,
@@ -29,6 +30,7 @@ enum Prefs {
 
     static var thresholds: [Int] { parse(UserDefaults.standard.string(forKey: "thresholds") ?? "") }
     static var allThresholdChips: [Int] {
-        Set(presetThresholds + parse(UserDefaults.standard.string(forKey: "customThresholds") ?? "")).sorted()
+        // Thresholds already on (e.g. 80% or 90% from the old presets) keep their chip, so they can still be turned off.
+        Set(presetThresholds + parse(UserDefaults.standard.string(forKey: "customThresholds") ?? "") + thresholds).sorted()
     }
 }

@@ -938,7 +938,7 @@ struct ClaudeCodeTab: View {
 struct NotificationsTab: View {
     @ObservedObject private var model = UsageModel.shared
     @State private var status: UNAuthorizationStatus = .notDetermined
-    @AppStorage("thresholds") private var thresholds = "75,80,90"
+    @AppStorage("thresholds") private var thresholds = "85,95"
     @AppStorage("notifySoon") private var soon = true
     @AppStorage("soonMinutes") private var soonMinutes = 10
     @AppStorage("notifyReset") private var notifyReset = true
