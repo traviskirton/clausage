@@ -4,14 +4,15 @@ enum MenuDisplay: String, CaseIterable {
     case off, percent, bars, fill
 }
 
-/// Draws the menubar item from the 12 logo rays, always monochrome (Ember never appears in the menu bar).
-/// In Fill and Percent modes the rays fill in clockwise as the highest limit is used: rays 11, 12, 1, 2 … 10, so
+/// Draws the menubar item from the 12 logo rays, monochrome unless Fill is in accent color.
+/// In Fill and Percent modes the rays fill in clockwise from the top as the highest limit is used: rays 1, 2 … 12, so
 /// `round(pct / 100 × 12)` rays are filled; filled rays at 100% of the template color, empty rays at 32%.
 /// Only the percent text can take a pressure color ("Tint percent by pressure"). Fill can opt into drawing its filled
-/// rays in the system accent color ("Fill in accent color"; the app's Ember when the system accent is Multicolor).
+/// rays in the system accent color over solid white ones ("Fill in accent color"; the app's Ember when the system
+/// accent is Multicolor).
 enum MenuBarIcon {
-    /// Fill order: the two upper-left rays (11 and 12), then clockwise from the top (1 … 10). Indices into `LogoRays.rays`.
-    static let fillOrder = [10, 11] + Array(0...9)
+    /// Fill order: clockwise from the top (rays 1 … 12). Indices into `LogoRays.rays`.
+    static let fillOrder = Array(0...11)
 
     static func pressureColor(_ limits: [UsageLimit]) -> NSColor? {
         let m = limits.map(\.percent).max() ?? 0
@@ -40,7 +41,7 @@ enum MenuBarIcon {
         let pressure = (display == .percent && tint) ? pressureColor(limits) : nil
         let accent = display == .fill && accentFill
         let template = pressure == nil && !(display == .fill && (pinnedBase || accent))
-        let base: NSColor = template ? .black : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1))
+        let base: NSColor = template ? .black : (accent ? .white : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1)))
         let height: CGFloat = 18, logoSize: CGFloat = 16
 
         var text: NSAttributedString?
@@ -68,7 +69,8 @@ enum MenuBarIcon {
                 return p
             }
             for (k, index) in fillOrder.enumerated() {
-                (accent && k < lit ? NSColor.controlAccentColor : base.withAlphaComponent(k < lit ? 1 : 0.32)).setFill()
+                // Accent Fill: filled rays in the accent color, the rest solid white underneath.
+                (accent ? (k < lit ? NSColor.controlAccentColor : .white) : base.withAlphaComponent(k < lit ? 1 : 0.32)).setFill()
                 path(LogoRays.rays[index]).fill()
             }
 
