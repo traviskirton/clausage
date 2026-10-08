@@ -283,49 +283,19 @@ struct SettingsSwitch: View {
     }
 }
 
-/// Native segmented control with the selected segment in Ember (`selectedSegmentBezelColor`; SwiftUI's segmented
-/// picker always draws a neutral selection on macOS).
+/// Native segmented control (SwiftUI's segmented picker), label hidden.
 struct SettingsSegmented<T: Hashable>: View {
     let label: String
     @Binding var selection: T
     let options: [(T, String)]
 
     var body: some View {
-        Segments(label: label, labels: options.map(\.1),
-                 selected: options.firstIndex { $0.0 == selection } ?? -1,
-                 onSelect: { i in if options.indices.contains(i) { selection = options[i].0 } })
-            .fixedSize()
-    }
-
-    private struct Segments: NSViewRepresentable {
-        let label: String
-        let labels: [String]
-        let selected: Int
-        let onSelect: (Int) -> Void
-
-        func makeCoordinator() -> Target { Target() }
-
-        func makeNSView(context: Context) -> NSSegmentedControl {
-            let c = NSSegmentedControl(labels: labels, trackingMode: .selectOne,
-                                       target: context.coordinator, action: #selector(Target.changed(_:)))
-            c.segmentStyle = .rounded
-            c.selectedSegmentBezelColor = NSColor(SettingsColor.ember)
-            c.setAccessibilityLabel(label)
-            return c
+        Picker(label, selection: $selection) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, o in Text(o.1).tag(o.0) }
         }
-
-        func updateNSView(_ c: NSSegmentedControl, context: Context) {
-            context.coordinator.onSelect = onSelect
-            if c.segmentCount != labels.count { c.segmentCount = labels.count }
-            for (i, l) in labels.enumerated() where c.label(forSegment: i) != l { c.setLabel(l, forSegment: i) }
-            if c.selectedSegment != selected { c.selectedSegment = selected }
-            c.isEnabled = context.environment.isEnabled
-        }
-
-        final class Target: NSObject {
-            var onSelect: (Int) -> Void = { _ in }
-            @objc func changed(_ c: NSSegmentedControl) { onSelect(c.selectedSegment) }
-        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
     }
 }
 
