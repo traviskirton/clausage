@@ -1126,7 +1126,10 @@ struct BusyLabel: View {
             Text(title).opacity(busy ? 0 : 1)
             if busy {
                 HStack(spacing: 5) {
+                    // The native spinner draws in gray and ignores tint: lift it to white, then multiply by the button's
+                    // text color.
                     ProgressView().controlSize(.small).scaleEffect(0.8)
+                        .brightness(1).colorMultiply(SettingsColor.buttonText)
                     Text(busyTitle)
                 }
             }
