@@ -10,6 +10,9 @@ struct RunningTotalChart: View {
     var lineWidth: CGFloat = 5
     /// Smaller markers and labels (large widget).
     var compact = false
+    /// Mac Settings: today's % sits on a small plate of this color, above and left of the dot (below and right when
+    /// that would touch the Limit line), so it never lands on the line. nil keeps the haloed label (iPhone, widget).
+    var labelBackground: Color? = nil
     var calendar: Calendar = .current
 
     @Environment(\.usageStyle) private var style
@@ -154,13 +157,28 @@ struct RunningTotalChart: View {
         // Today's running total, with a Paper halo; above the point, or below once it's over 85%.
         if let today = chart.points.last(where: { $0.day == chart.today }) {
             let c = g.p(Double(today.day), today.value)
-            let below = today.value > 85
-            let nearRight = today.day >= 5
             let size: CGFloat = compact ? 11 : 14
-            HaloText(text: "\(Int(chart.current.rounded()))%", size: size, halo: paper)
-                .fixedSize()
-                .position(x: nearRight ? c.x - size * 1.7 : c.x + size * 1.6,
-                          y: below ? c.y + size * 1.05 : c.y - size * 1.05)
+            if let plate = labelBackground {
+                // About 8pt off the dot. Above-left unless the label's top would come within 16pt of the Limit line.
+                let height = size + 4
+                let flip = c.y - 8 - height - g.y(100) < 16
+                Color.clear.frame(width: 0, height: 0)
+                    .overlay(alignment: flip ? .topLeading : .bottomTrailing) {
+                        Text("\(Int(chart.current.rounded()))%").font(.clausagePercent(size)).foregroundStyle(UsageColor.ink(style))
+                            .padding(.vertical, 2).padding(.horizontal, 4)
+                            .background(plate, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                            .fixedSize()
+                            .offset(x: flip ? 8 : -8, y: flip ? 8 : -8)
+                    }
+                    .position(c)
+            } else {
+                let below = today.value > 85
+                let nearRight = today.day >= 5
+                HaloText(text: "\(Int(chart.current.rounded()))%", size: size, halo: paper)
+                    .fixedSize()
+                    .position(x: nearRight ? c.x - size * 1.7 : c.x + size * 1.6,
+                              y: below ? c.y + size * 1.05 : c.y - size * 1.05)
+            }
         }
 
         // Day letters: today bold Ink, past days Ink 3, future days faint.

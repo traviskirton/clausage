@@ -105,9 +105,9 @@ struct UsageView: View {
             let id = o.id
             let announcement: String
             if o.ok {
-                // scheduled refreshes just update the time; no success hold. On Free it goes straight back to "Checked".
+                // scheduled refreshes just update the time; no success hold. On Free it goes straight back to "Updated".
                 hold = o.manual && !model.activeIsFree ? RefreshHold(id: id, failed: false) : nil
-                announcement = model.activeIsFree ? "Checked" : "Updated"
+                announcement = "Updated"
             } else {
                 hold = RefreshHold(id: id, failed: true)
                 announcement = "Couldn't update"
@@ -139,12 +139,10 @@ struct UsageView: View {
             .multilineTextAlignment(.center)
             .accessibilityElement(children: .combine)
             if let a = model.active {
-                Button { model.closePopover(); model.switchAccount(from: a) } label: {
-                    Text(FreePlanCopy.switchAccount).font(.system(size: 11, weight: .medium)).foregroundStyle(Color("EmberDeep"))
-                }
-                .buttonStyle(.plain)
-                .modifier(HandCursor())
-                .padding(.top, 6)
+                // A button, as in Settings (links are only for places outside the app).
+                Button(FreePlanCopy.switchAccount) { model.closePopover(); model.switchAccount(from: a) }
+                    .controlSize(.small)
+                    .padding(.top, 6)
             }
         }
         .frame(maxWidth: .infinity)
@@ -216,8 +214,8 @@ struct UsageView: View {
     private var refreshLabel: some View {
         let state = refreshState
         func layer(_ s: RefreshState) -> Double { state == s ? 1 : 0 }
-        let verb = model.activeIsFree ? "Checked" : "Updated"
-        let time = model.updated.map { "\(verb) \($0.formatted(date: .omitted, time: .shortened))" } ?? "—"
+        // "Updated" is the last fetch from claude.ai, with or without usage (Free too); "Checked" is for app updates.
+        let time = model.updated.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? "—"
         return Button {
             guard refreshState == .hover || refreshState == .idle else { return }
             model.refresh(userInitiated: true)
@@ -250,9 +248,7 @@ struct UsageView: View {
         .onHover { hoveringRefresh = $0 }
         .modifier(HandCursor())
         .help("Refresh now (⌘R)")
-        .accessibilityLabel(model.activeIsFree
-            ? "Check again. Last checked \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never")."
-            : "Refresh. Last updated \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never").")
+        .accessibilityLabel("Refresh. Last updated \(model.updated?.formatted(date: .omitted, time: .shortened) ?? "never").")
     }
 }
 

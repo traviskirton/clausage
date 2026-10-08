@@ -122,22 +122,13 @@ struct SettingsView: View {
         .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
 
-    /// The pane title (SF 20 bold) and, on the trailing side, the plan chip.
+    /// The pane title (SF 20 bold). The plan shows in the popover and on the Accounts row, not here.
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             Text(tab.rawValue).font(.system(size: 20, weight: .bold)).tracking(-0.4)
                 .foregroundStyle(SettingsColor.text)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
-            if let plan = model.activeState?.plan {
-                Text(plan.badge)
-                    .font(.clausageDisplay(12))
-                    .foregroundStyle(SettingsColor.text)
-                    .padding(.top, 3).padding(.bottom, 4).padding(.horizontal, 9)
-                    .background(SettingsColor.chip, in: Capsule())
-                    .lineLimit(1).fixedSize()
-                    .accessibilityLabel("Plan: \(plan.badge)")
-            }
         }
         .frame(height: 26)
         .padding(.top, 14).padding(.bottom, 14)
@@ -213,12 +204,15 @@ struct SettingsSection<Content: View>: View {
     var footer: String? = nil
     /// Stretch the box to the height it's offered (side-by-side groups of equal height).
     var fills = false
+    /// Something under the box, above the footer (e.g. Accounts' "Add Account…").
+    var below: AnyView? = nil
     @ViewBuilder let content: Content
 
-    init(_ title: String?, footer: String? = nil, fills: Bool = false, @ViewBuilder content: () -> Content) {
+    init(_ title: String?, footer: String? = nil, fills: Bool = false, below: AnyView? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.footer = footer
         self.fills = fills
+        self.below = below
         self.content = content()
     }
 
@@ -232,6 +226,7 @@ struct SettingsSection<Content: View>: View {
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: fills ? .infinity : nil, alignment: .topLeading)
                 .background(SettingsColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            if let below { below.padding(.top, 3) }
             if let footer {
                 Text(footer).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
@@ -500,7 +495,7 @@ struct UsageTab: View {
         SettingsSection("All models this week") {
             VStack(alignment: .leading, spacing: 12) {
                 if let chart {
-                    RunningTotalChart(chart: chart, level: level)
+                    RunningTotalChart(chart: chart, level: level, labelBackground: SettingsColor.chartCard)
                         .frame(height: 150)
                         .padding(.horizontal, 4).padding(.vertical, 6)
                         .background(SettingsColor.chartCard, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -656,7 +651,6 @@ struct GeneralTab: View {
     @AppStorage("fillBase") private var fillBase = "auto"
     @AppStorage("fillAccent") private var fillAccent = false
     @AppStorage("refreshMinutes") private var refresh = 5
-    @AppStorage("hotkeyEnabled") private var hotkey = true
 
     /// The menu bar shows the highest limit.
     private var sessionLabel: String {
@@ -672,19 +666,19 @@ struct GeneralTab: View {
             }
 
             SettingsSection("Menu bar") {
-                SettingsRow("Show usage next to icon") {
-                    SettingsSegmented(label: "Show usage next to icon", selection: $display, options: [("off", "Off"), ("percent", sessionLabel), ("bars", "Bars"), ("fill", "Fill")])
+                SettingsRow("Show usage") {
+                    SettingsSegmented(label: "Show usage", selection: $display, options: [("off", "Icon only"), ("percent", sessionLabel), ("bars", "Bars"), ("fill", "Fill")])
                 }
                 // Each option's own setting shows only while that option is chosen.
                 if display == "fill" {
                     VStack(spacing: 0) {
                         RowDivider()
-                        SettingsRow("Fill logo base", detail: "White rays on a dark menu bar, dark rays on a light one. Auto follows the menu bar.") {
-                            SettingsSegmented(label: "Fill logo base", selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")])
+                        SettingsRow("Icon color", detail: "Auto matches the menu bar.") {
+                            SettingsSegmented(label: "Icon color", selection: $fillBase, options: [("auto", "Auto"), ("white", "Light"), ("dark", "Dark")])
                         }
                         RowDivider()
-                        SettingsRow("Fill in accent color", detail: "Filled rays take your system accent color (System Settings → Appearance).") {
-                            SettingsSwitch(label: "Fill in accent color", isOn: $fillAccent)
+                        SettingsRow("Fill with accent color", detail: "Uses your accent color from System Settings.") {
+                            SettingsSwitch(label: "Fill with accent color", isOn: $fillAccent)
                         }
                     }
                     .transition(.opacity)
@@ -705,11 +699,9 @@ struct GeneralTab: View {
                     SettingsSegmented(label: "Refresh every", selection: $refresh, options: [(1, "1m"), (5, "5m"), (15, "15m"), (30, "30m")])
                 }
                 RowDivider()
+                // The recorder is the only control: clearing it (×) turns the shortcut off.
                 SettingsRow("Open popover from anywhere") {
-                    HStack(spacing: 8) {
-                        ShortcutField(name: .openPopover)
-                        SettingsSwitch(label: "Open popover from anywhere", isOn: $hotkey)
-                    }
+                    ShortcutField(name: .openPopover)
                 }
             }
         }
@@ -720,14 +712,19 @@ struct GeneralTab: View {
 
 struct AccountsTab: View {
     @ObservedObject var model: UsageModel
+    /// The account a Disconnect click is asking about.
+    @State private var confirming: Account?
     private var anyFree: Bool { model.accounts.contains { model.states[$0.id]?.plan?.isFree == true } }
 
+    private var footnote: String {
+        (anyFree ? "claude.ai doesn’t show usage on the Free plan, so there’s nothing to count. Clausage checks again on every refresh and starts counting as soon as there’s usage. " : "")
+            + (ClaudeSession.supportsMultipleAccounts
+               ? "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one."
+               : "Your session stays on this Mac and is only used to read plan usage from claude.ai. On macOS 13 Clausage keeps one account at a time.")
+    }
+
     var body: some View {
-        SettingsSection("Claude accounts",
-                        footer: (anyFree ? "claude.ai doesn’t show usage on the Free plan, so there’s nothing to count. Clausage checks again on every refresh and starts counting as soon as there’s usage. " : "")
-                            + (ClaudeSession.supportsMultipleAccounts
-                               ? "Each account is kept in its own isolated session on this Mac and only used to read plan usage from claude.ai. Alerts cover all accounts; the menu bar and widget show the selected one."
-                               : "Your session stays on this Mac and is only used to read plan usage from claude.ai. On macOS 13 Clausage keeps one account at a time.")) {
+        SettingsSection("Claude accounts", footer: footnote, below: model.accounts.isEmpty ? nil : AnyView(addButton)) {
             if model.accounts.isEmpty {
                 SettingsRow("Not connected", detail: "Sign in to see your plan usage.") {
                     Button("Connect…") { model.connect() }
@@ -735,29 +732,58 @@ struct AccountsTab: View {
             } else {
                 ForEach(Array(model.accounts.enumerated()), id: \.element.id) { i, a in
                     if i > 0 { RowDivider() }
-                    let st = model.states[a.id]
-                    SettingsRow(a.name + (a.id == model.active?.id ? "  ·  shown in menu bar" : ""),
-                                detail: accountDetail(st)) {
-                        HStack {
-                            if st?.signedOut == true { Button("Sign in…") { model.reconnect(a) } }
-                            else if a.id != model.active?.id { Button("Show") { model.setActive(a.id) } }
-                            if ClaudeSession.supportsMultipleAccounts, st?.plan?.isFree == true, st?.signedOut != true {
-                                Button("Switch…") { model.switchAccount(from: a) }
-                                    .help("Use another account: signs this one out, then opens claude.ai sign-in.")
-                            }
-                            Button("Disconnect", role: .destructive) { model.disconnect(a) }
-                        }
-                    }
+                    row(a)
                 }
-                RowDivider()
-                if ClaudeSession.supportsMultipleAccounts {
-                    SettingsRow("Add another account") { Button("Add account…") { model.connect() } }
-                } else {
-                    // macOS 13: one account (one shared cookie store), so another sign-in replaces it.
-                    SettingsRow("Use another account", detail: "Signs out, then opens claude.ai sign-in.") {
-                        Button("Switch…") { model.connect() }
-                    }
+            }
+        }
+        .confirmationDialog("Disconnect \(confirming?.name ?? "this account")?",
+                            isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
+                            presenting: confirming) { a in
+            Button("Disconnect", role: .destructive) { model.disconnect(a) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Clausage signs it out on this Mac and forgets its usage history.")
+        }
+    }
+
+    /// With two or more accounts, a radio picks the one the menu bar shows.
+    private func row(_ a: Account) -> some View {
+        let st = model.states[a.id]
+        return HStack(spacing: 8) {
+            if model.accounts.count > 1 {
+                Picker("Show in menu bar", selection: Binding(get: { model.active?.id }, set: { if let id = $0 { model.setActive(id) } })) {
+                    Text("").tag(Optional(a.id))
                 }
+                .pickerStyle(.radioGroup)
+                .labelsHidden()
+                .fixedSize()
+                .accessibilityLabel("Show \(a.name) in the menu bar")
+            }
+            SettingsRow(a.name, detail: accountDetail(st)) {
+                HStack {
+                    if st?.signedOut == true { Button("Sign In…") { model.reconnect(a) } }
+                    if ClaudeSession.supportsMultipleAccounts, st?.plan?.isFree == true, st?.signedOut != true {
+                        Button("Switch…") { model.switchAccount(from: a) }
+                            .help("Use another account: signs this one out, then opens claude.ai sign-in.")
+                    }
+                    Button(role: .destructive) { confirming = a } label: {
+                        Text("Disconnect").foregroundStyle(Color("CriticalText"))
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+    }
+
+    /// Under the card, trailing. On macOS 13 there's one account (one shared cookie store), so another sign-in replaces it.
+    private var addButton: some View {
+        HStack {
+            Spacer()
+            if ClaudeSession.supportsMultipleAccounts {
+                Button("Add Account…") { model.connect() }
+            } else {
+                Button("Use Another Account…") { model.connect() }
+                    .help("Signs out, then opens claude.ai sign-in.")
             }
         }
     }
@@ -766,8 +792,7 @@ struct AccountsTab: View {
         if st?.signedOut == true { return "Signed out" }
         var parts: [String] = []
         if let p = st?.plan?.badge { parts.append(p) }
-        let verb = st?.plan?.isFree == true ? "Checked" : "Last updated"
-        parts.append(st?.updated.map { "\(verb) \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Fetching usage…")
+        parts.append(st?.updated.map { "Last updated \($0.formatted(date: .abbreviated, time: .shortened))" } ?? "Fetching usage…")
         return parts.joined(separator: " · ")
     }
 }
@@ -789,15 +814,18 @@ struct ClaudeCodeTab: View {
     }
 
     /// Free: the switch still works; the breakdown is replaced by why it's empty.
+    /// Free: just why it's empty, and the same way forward as the Usage pane. The scan switch comes back on Pro or Max.
     private var freeBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            scanSwitch
             VStack(spacing: 8) {
                 EmptyTally(size: 36)
                 Text("Nothing to break down yet").font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
                 Text("This shows what’s driving your Claude Code limit. It needs a Pro or Max plan, since Free doesn’t include Claude Code.")
                     .font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
                     .multilineTextAlignment(.center).frame(maxWidth: 340).fixedSize(horizontal: false, vertical: true)
+                if ClaudeSession.supportsMultipleAccounts, let a = model.active {
+                    Button(FreePlanCopy.switchAccount) { model.switchAccount(from: a) }.padding(.top, 6)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 28).padding(.horizontal, 20)
@@ -952,12 +980,18 @@ struct NotificationsTab: View {
     @AppStorage("notifyReset") private var notifyReset = true
     @AppStorage("notifyOutage") private var notifyOutage = false
 
+    private var allowed: Bool { status == .authorized || status == .provisional }
+
     private var statusText: String {
-        switch status {
-        case .authorized, .provisional, .ephemeral: return "Allowed"
-        case .denied: return "Blocked in System Settings"
-        default: return "Not requested yet"
-        }
+        if allowed { return "Allowed" }
+        return status == .denied ? "Off in System Settings" : "Not requested yet"
+    }
+
+    /// Under the card: what to expect from the one action this state offers.
+    private var permissionFootnote: String? {
+        if allowed { return nil }
+        return status == .denied ? "The alerts above won’t appear until notifications are turned on."
+                                 : "macOS asks only once. After that, you change it in System Settings."
     }
 
     var body: some View {
@@ -993,25 +1027,28 @@ struct NotificationsTab: View {
                 }
             }
 
-            SettingsSection("Permission",
-                            footer: "macOS only lets an app ask for permission once. After that, turn notifications on or off in System Settings.") {
+            // One action per state: Allow… before macOS has asked, Open System Settings… once it's off, none when allowed.
+            SettingsSection("Permission", footer: permissionFootnote) {
                 SettingsRow("Notifications", detail: statusText) {
-                    HStack {
-                        if status == .notDetermined {
-                            Button("Allow…") { Task { await Notifier.requestAuthorization(); await load() } }
-                        }
+                    if status == .denied {
                         Button("Open System Settings…") { openSystemSettings() }
+                    } else if !allowed {
+                        Button("Allow…") { Task { await Notifier.requestAuthorization(); await load() } }
                     }
                 }
                 RowDivider()
                 SettingsRow("Send a test notification") {
-                    Button("Send test") { Notifier.sendTest() }.disabled(status == .denied)
+                    Button("Send test") { Notifier.sendTest() }
                 }
+                .disabled(!allowed)
             }
         }
         .task { await load() }
-        // Refresh when returning from System Settings.
+        // Re-read when coming back from System Settings, or when the Settings window becomes key again.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await load() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             Task { await load() }
         }
     }
@@ -1155,24 +1192,18 @@ struct AboutTab: View {
             VStack(spacing: 14) {
                 icon
                 VStack(spacing: 6) {
-                    Text("clausage")
+                    Text("Clausage")
                         .font(.clausageDisplay(34)).brandTracking(-0.045, size: 34)
                         .foregroundStyle(SettingsColor.text)
-                        .accessibilityLabel("Clausage")
                     Text("Your Claude plan limits, at a glance.")
                         .font(.system(size: 13)).foregroundStyle(SettingsColor.secondary)
-                    Text("Version \(AppVersion.short) (\(AppVersion.build))")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced)).monospacedDigit()
-                        .foregroundStyle(SettingsColor.secondary)
-                        .textSelection(.enabled)
+                    versionLine
                 }
             }
             .padding(.top, 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             SettingsSection(nil) {
-                SettingsRow(updateTitle, detail: updateDetail) { updateControl }
-                RowDivider()
                 Button(action: sendFeedback) {
                     SettingsRow("Send Feedback", detail: "Bugs, ideas, or numbers that look wrong. Goes to the developer.") {
                         Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold))
@@ -1213,33 +1244,29 @@ struct AboutTab: View {
             .accessibilityHidden(true)
     }
 
-    private var updateTitle: String {
-        switch updater.status {
-        case .idle: "Not checked yet"
-        case .checking: updater.lastChecked == nil ? "Not checked yet" : "Up to date"     // the button says Refreshing…
-        case .upToDate: "Up to date"
-        case .available(let v): "Version \(v) is available"
-        case .installing: "Installing \(updater.availableVersion ?? "the update")…"
-        case .failed: "Couldn’t check for updates"
-        }
-    }
-
-    private var updateDetail: String? {
-        if case .failed(let message) = updater.status { return message }
-        guard let d = updater.lastChecked else { return nil }
-        let time = d.formatted(date: .omitted, time: .shortened)
-        let day = Calendar.current.isDateInToday(d) ? "today" : Calendar.current.isDateInYesterday(d) ? "yesterday"
-            : d.formatted(.dateTime.month(.abbreviated).day())
-        return "Checked \(day) at \(time)"
-    }
-
-    @ViewBuilder private var updateControl: some View {
-        switch updater.status {
-        case .available, .installing: InstallNowButton()
-        default:
-            Button { updater.check() } label: {
-                BusyLabel(title: "Check Now", busyTitle: "Refreshing…", busy: updater.status == .checking)
+    /// "Version 0.0.11 (10) · Up to date · Updates…": the last known update result, and a way to the Updates pane,
+    /// where checking and installing live.
+    private var versionLine: some View {
+        HStack(spacing: 0) {
+            Text("Version \(AppVersion.short) (\(AppVersion.build))")
+                .font(.system(size: 12, weight: .medium, design: .monospaced)).monospacedDigit()
+                .textSelection(.enabled)
+            if let status = lastKnownStatus {
+                Text(" · \(status)").font(.system(size: 12))
             }
+            Text(" · ").font(.system(size: 12))
+            Button("Updates…") { SettingsWindow.shared.show(tab: .updates) }
+                .buttonStyle(.link)
+                .font(.system(size: 12))
+                .foregroundStyle(SettingsColor.link)
+        }
+        .foregroundStyle(SettingsColor.secondary)
+    }
+
+    private var lastKnownStatus: String? {
+        switch updater.status {
+        case .available, .installing: return "Update available"
+        default: return updater.lastChecked == nil ? nil : "Up to date"
         }
     }
 

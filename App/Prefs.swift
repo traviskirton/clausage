@@ -16,7 +16,6 @@ enum Prefs {
             "soonMinutes": 10,
             "notifyReset": true,
             "refreshMinutes": 5,
-            "hotkeyEnabled": true,
             "notifyOutage": false,
         ])
         // Ring was dropped from the menu bar options; its closest replacement is Bars.

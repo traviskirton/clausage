@@ -139,7 +139,7 @@ final class UsageModel: ObservableObject {
 
     // MARK: Prefs
 
-    /// Re-applies settings that need action (refresh interval, hotkey).
+    /// Re-applies settings that need action (the refresh interval).
     private func applyPrefs() {
         let d = UserDefaults.standard
         let minutes = max(1, d.integer(forKey: "refreshMinutes"))
@@ -153,7 +153,6 @@ final class UsageModel: ObservableObject {
                 }
             }
         }
-        Hotkey.setEnabled(d.bool(forKey: "hotkeyEnabled"))
     }
 
     private func saveAccounts() {

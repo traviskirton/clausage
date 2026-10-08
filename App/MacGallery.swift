@@ -17,24 +17,26 @@ enum MacGallery {
             let fitting = NSHostingView(rootView: view).fittingSize
             snapshot(view, size: fitting, appearance: scheme == .dark ? .darkAqua : .aqua, to: "\(dir)/popover-\(name).png")
         }
-        // Menu bar icon: the same snapshot at a few levels, every display mode, on light and dark bars.
-        var row: [NSImage] = []
-        for pct in [0.0, 30, 62, 88, 96] {
-            let l = model.limits.map { UsageLimit(id: $0.id, kind: $0.kind, title: $0.title, shortTitle: $0.shortTitle,
-                                                  percent: $0.kind == "session" ? pct : min($0.percent, pct), resetsAt: $0.resetsAt,
-                                                  severity: $0.severity, isActive: $0.isActive) }
-            for mode in MenuDisplay.allCases {
-                row.append(MenuBarIcon.image(display: mode, limits: l, tint: true, darkMenubar: false, free: model.activeIsFree))
+        // Menu bar icon: the same snapshot at a few levels, every display mode, on light and dark bars (each half drawn
+        // for its bar, as the menu bar does).
+        writeIcons(columns: MenuDisplay.allCases.count, to: "\(dir)/menubar.png") { dark in
+            [0.0, 30, 62, 88, 96].flatMap { pct in
+                let l = model.limits.map { UsageLimit(id: $0.id, kind: $0.kind, title: $0.title, shortTitle: $0.shortTitle,
+                                                      percent: $0.kind == "session" ? pct : min($0.percent, pct), resetsAt: $0.resetsAt,
+                                                      severity: $0.severity, isActive: $0.isActive) }
+                return MenuDisplay.allCases.map {
+                    MenuBarIcon.image(display: $0, limits: l, tint: true, darkMenubar: dark, free: model.activeIsFree)
+                }
             }
         }
-        writeIcons(row, columns: MenuDisplay.allCases.count, to: "\(dir)/menubar.png")
-        // Fill in accent color, at the same levels.
-        let accent = [0.0, 30, 62, 88, 96].map { pct in
-            MenuBarIcon.image(display: .fill, limits: [UsageLimit(id: "s", kind: "session", title: "Current session", shortTitle: "Session",
-                                                                  percent: pct, resetsAt: nil, severity: "normal", isActive: nil)],
-                              tint: true, darkMenubar: false, accentFill: true)
+        // Fill with accent color, at the same levels.
+        writeIcons(columns: 5, to: "\(dir)/menubar-accent.png") { dark in
+            [0.0, 30, 62, 88, 96].map { pct in
+                MenuBarIcon.image(display: .fill, limits: [UsageLimit(id: "s", kind: "session", title: "Current session", shortTitle: "Session",
+                                                                      percent: pct, resetsAt: nil, severity: "normal", isActive: nil)],
+                                  tint: true, darkMenubar: dark, accentFill: true)
+            }
         }
-        writeIcons(accent, columns: accent.count, to: "\(dir)/menubar-accent.png")
 
         // Settings: real AppKit + SwiftUI views drawn offscreen, so native controls render too.
         ClaudeCodeLogs.previewAccess = true
@@ -49,14 +51,28 @@ enum MacGallery {
                          to: "\(dir)/settings-\(tab.rawValue.replacingOccurrences(of: " ", with: ""))-\(name).png")
             }
         }
-        // Updates and About while a check runs.
+        // Accounts with two accounts: a radio per row picks the one the menu bar shows.
+        let second = Account(id: UUID(), name: "work@example.com", orgID: "demo-2")
+        model.accounts.append(second)
+        model.states[second.id] = model.activeState
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            snapshot(SettingsView(model: model, tab: .accounts), size: NSSize(width: 760, height: 600), appearance: appearance,
+                     to: "\(dir)/settings-Accounts-two-\(name).png")
+        }
+        model.accounts.removeAll { $0.id == second.id }
+        model.states[second.id] = nil
+
+        // Updates while a check runs.
         Updater.shared.previewChecking()
-        for tab in [SettingsTab.updates, .about] {
+        for tab in [SettingsTab.updates] {
             snapshot(SettingsView(model: model, tab: tab), size: NSSize(width: 760, height: 600), appearance: .darkAqua,
                      to: "\(dir)/settings-\(tab.rawValue)-checking-dark.png")
         }
         // Updates with an update ready (3g).
-        Updater.shared.previewAvailable("0.0.9", build: "9")
+        // The version after this one, so the preview never reads as a downgrade.
+        let next = AppVersion.short.split(separator: ".").map(String.init).enumerated()
+            .map { i, p in i == 2 ? String((Int(p) ?? 0) + 1) : p }.joined(separator: ".")
+        Updater.shared.previewAvailable(next, build: String((Int(AppVersion.build) ?? 0) + 1))
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
             snapshot(SettingsView(model: model, tab: .updates), size: NSSize(width: 760, height: 600), appearance: appearance,
                      to: "\(dir)/settings-Updates-available-\(name).png")
@@ -107,16 +123,17 @@ enum MacGallery {
         try? png.write(to: URL(fileURLWithPath: path))
     }
 
-    private static func writeIcons(_ icons: [NSImage], columns: Int, to path: String) {
+    private static func writeIcons(columns: Int, to path: String, icons make: (_ dark: Bool) -> [NSImage]) {
         let cell = NSSize(width: 70, height: 26)
-        let rows = (icons.count + columns - 1) / columns
+        let sets = [false: make(false), true: make(true)]
+        let rows = ((sets[false]?.count ?? 0) + columns - 1) / columns
         let size = NSSize(width: cell.width * CGFloat(columns) * 2, height: cell.height * CGFloat(rows) * 2 * 2)
         let img = NSImage(size: size, flipped: true) { _ in
             for (half, dark) in [(0, false), (1, true)] {
                 let y0 = CGFloat(half) * cell.height * CGFloat(rows) * 2
                 (dark ? NSColor(white: 0.15, alpha: 1) : NSColor(white: 0.93, alpha: 1)).setFill()
                 NSRect(x: 0, y: y0, width: size.width, height: cell.height * CGFloat(rows) * 2).fill()
-                for (i, icon) in icons.enumerated() {
+                for (i, icon) in (sets[dark] ?? []).enumerated() {
                     let x = CGFloat(i % columns) * cell.width * 2 + 16, y = y0 + CGFloat(i / columns) * cell.height * 2 + 8
                     let drawn = icon.isTemplate ? tinted(icon, dark ? .white : .black) : icon
                     drawn.draw(in: NSRect(x: x, y: y, width: icon.size.width * 2, height: icon.size.height * 2))
