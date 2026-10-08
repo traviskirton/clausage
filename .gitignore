@@ -17,3 +17,4 @@ design/*
 .claude/release.env
 .claude/settings.local.json
 build-dev/
+design-status/

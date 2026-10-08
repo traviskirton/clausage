@@ -13,7 +13,9 @@ enum MacGallery {
                 .environment(\.colorScheme, scheme)
                 .padding(30)
                 .background(backdrop)
-            write(view, to: "\(dir)/popover-\(name).png")
+            // Through an offscreen window, so the AppKit parts (the gear button) draw too.
+            let fitting = NSHostingView(rootView: view).fittingSize
+            snapshot(view, size: fitting, appearance: scheme == .dark ? .darkAqua : .aqua, to: "\(dir)/popover-\(name).png")
         }
         // Menu bar icon: the same snapshot at a few levels, every display mode, on light and dark bars.
         var row: [NSImage] = []
