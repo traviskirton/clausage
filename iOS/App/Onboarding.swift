@@ -68,18 +68,23 @@ struct WelcomeScreen: View {
 /// Shown over the web view as soon as the session lands, then dismissed after about 1.2s.
 struct ConnectedView: View {
     let who: String?
+    /// false while the new session is being checked ("Connecting…", the tally counting).
+    var connected = true
     @State private var filled = 0
 
     var body: some View {
         VStack(spacing: 10) {
-            Tally(size: 96, filled: filled)
-            Text("Connected").font(.system(size: 28, weight: .bold)).foregroundStyle(Color("Ink")).padding(.top, 8)
-            if let who { Text(who).font(.system(size: 17)).foregroundStyle(Color("Ink2")) }
+            if connected { Tally(size: 96, filled: filled) } else { TallyLoader(size: 96) }
+            Text(connected ? "Connected" : "Connecting…").font(.system(size: 28, weight: .bold)).foregroundStyle(Color("Ink"))
+                .padding(.top, 8).contentTransition(.opacity)
+            Text(who ?? " ").font(.system(size: 17)).foregroundStyle(Color("Ink2"))
             Text("Counting your usage…").font(.system(size: 15)).foregroundStyle(Color("Ink3")).padding(.top, 12)
+                .opacity(connected ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LinearGradient(colors: [Color("Paper"), Color("Paper2")], startPoint: .top, endPoint: .bottom))
-        .task {
+        .task(id: connected) {
+            guard connected else { return }
             for i in 1...3 {
                 try? await Task.sleep(for: .milliseconds(160))
                 withAnimation(.easeOut(duration: 0.15)) { filled = i }

@@ -7,10 +7,12 @@ struct ClaudeWebView: UIViewRepresentable {
     var onSignedIn: () -> Void
     /// A page `SignInPolicy` refused to open (shown in debug builds, to find sign-in hosts it's missing).
     var onBlocked: (URL) -> Void = { _ in }
+    /// claude.ai has set a session and Clausage is checking it (true), or the check didn't pass yet (false).
+    var onConnecting: (Bool) -> Void = { _ in }
 
     static let store = WKWebsiteDataStore.default()
 
-    func makeCoordinator() -> Coordinator { Coordinator(onSignedIn: onSignedIn, onBlocked: onBlocked) }
+    func makeCoordinator() -> Coordinator { Coordinator(onSignedIn: onSignedIn, onBlocked: onBlocked, onConnecting: onConnecting) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -46,13 +48,15 @@ struct ClaudeWebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKHTTPCookieStoreObserver, UIGestureRecognizerDelegate {
         let onSignedIn: () -> Void
         let onBlocked: (URL) -> Void
+        let onConnecting: (Bool) -> Void
         weak var webView: WKWebView?
         private var busy = false
         private var done = false
 
-        init(onSignedIn: @escaping () -> Void, onBlocked: @escaping (URL) -> Void) {
+        init(onSignedIn: @escaping () -> Void, onBlocked: @escaping (URL) -> Void, onConnecting: @escaping (Bool) -> Void) {
             self.onSignedIn = onSignedIn
             self.onBlocked = onBlocked
+            self.onConnecting = onConnecting
         }
 
         func cookiesDidChange(in cookieStore: WKHTTPCookieStore) { Task { @MainActor in await tryComplete() } }
@@ -132,10 +136,12 @@ struct ClaudeWebView: UIViewRepresentable {
             defer { busy = false }
             let cookies = await ClaudeWebView.store.httpCookieStore.allCookies()
             guard let key = cookies.first(where: { $0.name == "sessionKey" && $0.domain.hasSuffix("claude.ai") })?.value else { return }
+            // Cover claude.ai's page right away: it carries on into its own app while the check below runs.
+            onConnecting(true)
             let ua = (try? await webView.evaluateJavaScript("navigator.userAgent")) as? String ?? ""
             var record = ClaudeSessionRecord(sessionKey: key, userAgent: ua, orgID: "", orgName: "")
             // Not signed in yet (or not finished) until the API accepts the cookie.
-            guard let org = try? await UsageClient.resolveOrg(CookieTransport(record: record)) else { return }
+            guard let org = try? await UsageClient.resolveOrg(CookieTransport(record: record)) else { onConnecting(false); return }
             record.orgID = org.id
             record.orgName = org.name
             guard SessionStore.save(record) else { return }
@@ -145,11 +151,13 @@ struct ClaudeWebView: UIViewRepresentable {
     }
 }
 
-/// Sheet chrome around claude.ai's own sign-in page: a Cancel pill, the title and "🔒 claude.ai". When the session lands,
-/// a native "Connected" screen covers the web view for about 1.2s.
+/// Sheet chrome around claude.ai's own sign-in page: a Cancel pill, the title and "🔒 claude.ai". As soon as claude.ai
+/// sets a session, a native screen covers the web view: "Connecting…" while Clausage checks it, then "Connected" for
+/// about 1.2s (the email fills in when it arrives).
 struct SignInSheet: View {
     var onSignedIn: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var connecting = false
     @State private var connected = false
     @State private var who: String?
     @State private var blocked: URL?
@@ -179,7 +187,8 @@ struct SignInSheet: View {
 
             ZStack(alignment: .bottom) {
                 ClaudeWebView(onSignedIn: { Task { await finish() } },
-                              onBlocked: { url in if !SignInPolicy.isGoogleOneTap(url) { blocked = url } })   // One Tap is meant to be blocked
+                              onBlocked: { url in if !SignInPolicy.isGoogleOneTap(url) { blocked = url } },   // One Tap is meant to be blocked
+                              onConnecting: { on in withAnimation(.easeInOut(duration: 0.2)) { connecting = on } })
                 #if DEBUG
                 if let blocked {
                     Text("Blocked: \(blocked.host ?? blocked.absoluteString)\(blocked.host == nil ? "" : blocked.path)")
@@ -190,26 +199,29 @@ struct SignInSheet: View {
                         .textSelection(.enabled)
                 }
                 #endif
-                if connected {
-                    ConnectedView(who: who).transition(.opacity)
+                if connecting || connected {
+                    ConnectedView(who: who, connected: connected).transition(.opacity)
                 }
             }
         }
-        .interactiveDismissDisabled(connected)
+        .interactiveDismissDisabled(connecting || connected)
     }
 
     private func finish() async {
+        withAnimation(.easeInOut(duration: 0.2)) { connected = true }
+        let shown = Date()
         if let record = SessionStore.load() {
-            let email = await UsageClient.accountEmail(CookieTransport(record: record))
             // A fresh snapshot: nothing from a previous account carries over (plan, credits, email).
             var snap = SharedStore.Snapshot(limits: [], updated: Date(), connected: true)
-            snap.email = email
             snap.cleared = true          // no numbers yet; the first refresh fills them in
             SharedStore.save(snap)
-            who = email ?? record.orgName
+            let email = await UsageClient.accountEmail(CookieTransport(record: record))
+            snap.email = email
+            SharedStore.save(snap)
+            withAnimation(.easeOut(duration: 0.2)) { who = email ?? record.orgName }
         }
-        withAnimation(.easeInOut(duration: 0.2)) { connected = true }
-        try? await Task.sleep(for: .milliseconds(1200))
+        let left = 1.2 - Date().timeIntervalSince(shown)
+        if left > 0 { try? await Task.sleep(for: .seconds(left)) }
         onSignedIn()
         dismiss()
     }
