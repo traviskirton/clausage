@@ -152,10 +152,11 @@ struct ClaudeWebView: UIViewRepresentable {
 }
 
 /// Sheet chrome around claude.ai's own sign-in page: a Cancel pill, the title and "🔒 claude.ai". As soon as claude.ai
-/// sets a session, a native screen covers the web view: "Connecting…" while Clausage checks it, then "Connected" for
-/// about 1.2s (the email fills in when it arrives).
+/// sets a session, a native screen covers the web view: "Connecting…" while Clausage checks it, then "Connected" (the
+/// email fills in when it arrives) until `onSignedIn` has fetched the first usage, at least 1.2s. The sheet then slides
+/// away onto the Usage screen with its numbers already in.
 struct SignInSheet: View {
-    var onSignedIn: () -> Void
+    var onSignedIn: () async -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var connecting = false
     @State private var connected = false
@@ -220,9 +221,10 @@ struct SignInSheet: View {
             SharedStore.save(snap)
             withAnimation(.easeOut(duration: 0.2)) { who = email ?? record.orgName }
         }
+        // After the email: its save above would otherwise overwrite the fresh numbers.
+        await onSignedIn()
         let left = 1.2 - Date().timeIntervalSince(shown)
         if left > 0 { try? await Task.sleep(for: .seconds(left)) }
-        onSignedIn()
         dismiss()
     }
 }

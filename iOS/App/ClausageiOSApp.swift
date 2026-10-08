@@ -106,6 +106,19 @@ final class PhoneModel: ObservableObject {
         return ok
     }
 
+    /// Right after sign-in, while the sheet still shows "Connected": the first fetch, so the sheet slides away onto the
+    /// Usage screen with numbers in. Waits at most `limit`; a slower fetch carries on and fills them in when it lands.
+    func finishSignIn(limit: Duration = .seconds(6)) async {
+        let fetch = Task { await refresh() }
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { _ = await fetch.value }
+            group.addTask { try? await Task.sleep(for: limit) }
+            await group.next()
+            group.cancelAll()
+        }
+        sync()   // signed in either way, even if the fetch is still out
+    }
+
     /// Sample mode, from the welcome screen or Settings: a `SampleData` scenario instead of an account.
     func startSample(_ id: String = SampleData.maxMixed.id) {
         SampleMode.start(id)

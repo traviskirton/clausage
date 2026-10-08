@@ -40,7 +40,7 @@ struct UsageScreen: View {
         }
         .tint(Color("Ink"))
         .sheet(isPresented: $showSignIn) {
-            SignInSheet { Task { await model.refresh() } }
+            SignInSheet { await model.finishSignIn() }
         }
         .task {
             #if DEBUG
