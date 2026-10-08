@@ -18,7 +18,7 @@ settings:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: G3GED29J33
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "0.0.9"
+    MARKETING_VERSION: "0.0.10"
     # iPhone app and its widgets. Follows the Mac for now; set it to the App Store Connect version (1.0) only for the
     # build submitted to App Review. Its own name, so release.sh's MARKETING_VERSION bump never touches it.
     IPHONE_VERSION: $(MARKETING_VERSION)
