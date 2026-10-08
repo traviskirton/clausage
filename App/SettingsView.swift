@@ -294,6 +294,7 @@ struct SettingsSegmented<T: Hashable>: View {
         Segments(label: label, labels: options.map(\.1),
                  selected: options.firstIndex { $0.0 == selection } ?? -1,
                  onSelect: { i in if options.indices.contains(i) { selection = options[i].0 } })
+            .controlSize(.large)      // macOS 26 draws large controls as capsules
             .fixedSize()
     }
 
