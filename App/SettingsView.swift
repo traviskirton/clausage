@@ -294,6 +294,7 @@ struct SettingsSegmented<T: Hashable>: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
+        .tint(SettingsColor.ember)      // same Ember as the switches, not the deeper button-text tint
     }
 }
 
