@@ -48,6 +48,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+        // macOS focuses the first control when a window opens, which rings the Usage row. Start with nothing focused;
+        // Tab brings the focus ring in.
+        DispatchQueue.main.async { [weak self] in self?.window?.makeFirstResponder(nil) }
     }
 
     func windowWillClose(_ notification: Notification) {
