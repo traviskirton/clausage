@@ -45,3 +45,9 @@ Clausage 0.0.6 in progress: iOS App Store requirements, sample data mode, tally 
 **iPhone main screen v3, Settings before the v2 handoff**
 
 Main screen rebuilt to the v3 handoff (system nav bar, tally title row, runout chip, idle/full rows). Settings still has the old notification names, in-app Feedback and Privacy screens, one app icon (the tally) and no Acknowledgements.
+
+## v8-pre-macos-v2
+
+**Mac app before the macOS v2 handoff**
+
+Clausage 0.0.6 in progress: iPhone main screen v3, Settings v2, pull to refresh, sign-in that waits for the first fetch. The Mac popover and Settings still have the pre-v3 styling: the product line in the popover, no Usage pane in Settings, system blue accent.
