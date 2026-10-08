@@ -1100,14 +1100,13 @@ struct UpdatesTab: View {
     }
 }
 
-/// The primary action: quits, installs the ready update and relaunches. Ember with Ink text (white on Ember is about
-/// 3.3:1; Ink is about 5.6:1).
+/// The primary action: quits, installs the ready update and relaunches. Native prominent button: Ember, white text.
 struct InstallNowButton: View {
     @ObservedObject private var updater = Updater.shared
 
     var body: some View {
         Button { updater.installNow() } label: {
-            Text("Install Now").foregroundStyle(Color(nsColor: NSColor(srgbRed: 0x26 / 255, green: 0x23 / 255, blue: 0x1F / 255, alpha: 1)))
+            Text("Install Now")
         }
         .buttonStyle(.borderedProminent)
         .tint(SettingsColor.ember)
