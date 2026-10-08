@@ -51,3 +51,9 @@ Main screen rebuilt to the v3 handoff (system nav bar, tally title row, runout c
 **Mac app before the macOS v2 handoff**
 
 Clausage 0.0.6 in progress: iPhone main screen v3, Settings v2, pull to refresh, sign-in that waits for the first fetch. The Mac popover and Settings still have the pre-v3 styling: the product line in the popover, no Usage pane in Settings, system blue accent.
+
+## v9-pre-macos-settings
+
+**Mac 0.0.8 shipped, before the Settings v2 handoff**
+
+Clausage 0.0.9 in progress (0.0.8 released): popover and Settings in the v2 styling, native segmented pickers, accent Fill option, release.sh installs the previous release for an update test. Updates still go through Sparkle's gentle reminder (a notification and a popover line) or silent install on quit.
