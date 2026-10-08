@@ -36,7 +36,9 @@ enum SettingsColor {
     /// Unselected threshold chip.
     static let control = dynamic(0x26231F, 0.07, dark: 0xF4EDE2, 0.08)
     static var textNS: NSColor { ns(0x26231F, 1, dark: 0xF4EDE2, 1) }
-    static let selectedRow = dynamic(0xFF4A1C, 0.12, dark: 0xFF4A1C, 0.20)
+    static let selectedRow = dynamic(0xFF4A1C, 0.18, dark: 0xFF4A1C, 0.30)
+    /// Secondary (.bordered) button text: Ember Deep in light mode for contrast, a lighter Ember in dark.
+    static let buttonText = dynamic(0xC23B14, dark: 0xFF6A40)
     static let tile = dynamic(0x8A8278, dark: 0x8F867A)
     static let link = dynamic(0xC23B14, dark: 0xFF8A63)
     /// The running-total chart's Paper card and its 1pt inset edge.
@@ -114,7 +116,8 @@ struct SettingsView: View {
         }
         .foregroundStyle(SettingsColor.text)
         .background(SettingsColor.window)
-        .tint(SettingsColor.ember)
+        .tint(SettingsColor.buttonText)      // .bordered buttons' text; switches and Install Now set Ember themselves
+        .onReceive(SettingsWindow.shared.$requestedTab.compactMap { $0 }) { tab = $0 }
         .frame(maxWidth: .infinity, maxHeight: .infinity)      // the window sets the size (760 × 600); a fixed size here makes SwiftUI add the title bar to it
         .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
@@ -122,7 +125,7 @@ struct SettingsView: View {
     /// The pane title (SF 20 bold) and, on the trailing side, the plan chip.
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text(tab.rawValue).font(.system(size: 20, weight: .bold)).tracking(-0.2)
+            Text(tab.rawValue).font(.system(size: 20, weight: .bold)).tracking(-0.4)
                 .foregroundStyle(SettingsColor.text)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
@@ -279,7 +282,7 @@ struct SettingsSwitch: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Toggle(label, isOn: $isOn).toggleStyle(.switch).labelsHidden().controlSize(.small)
+        Toggle(label, isOn: $isOn).toggleStyle(.switch).labelsHidden().controlSize(.small).tint(SettingsColor.ember)
     }
 }
 
@@ -1046,15 +1049,76 @@ enum AppVersion {
 
 struct UpdatesTab: View {
     @ObservedObject private var updater = Updater.shared
+
     var body: some View {
         SettingsSection("Version") {
-            SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))") {
-                Button("Check for Updates…") { updater.checkForUpdates() }.disabled(!updater.canCheck)
-            }
+            version
             RowDivider()
             SettingsRow("Check automatically", detail: "Looks for new versions in the background.") {
                 SettingsSwitch(label: "Check automatically", isOn: Binding(get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }))
             }
+        }
+    }
+
+    /// Up to date: this version and "Check for Updates…". An update ready: "Clausage 0.0.9 (9) is available", what
+    /// you have, release notes when the appcast has them, and Install Now.
+    @ViewBuilder private var version: some View {
+        switch updater.status {
+        case .available, .installing:
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Clausage \(updater.availableVersion ?? "")\(updater.availableBuild.map { " (\($0))" } ?? "") is available")
+                        .font(.system(size: 13)).foregroundStyle(SettingsColor.text)
+                    HStack(spacing: 4) {
+                        Text("You have \(AppVersion.short) (\(AppVersion.build))")
+                        if let notes = updater.releaseNotes {
+                            Text("·")
+                            Link(destination: notes) {
+                                HStack(spacing: 2) {
+                                    Text("Release notes")
+                                    Image(systemName: "arrow.up.right").font(.system(size: 9, weight: .semibold))
+                                }
+                                .foregroundStyle(SettingsColor.link)
+                            }
+                        }
+                    }
+                    .font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
+                }
+                Spacer(minLength: 8)
+                InstallNowButton()
+            }
+            .padding(.vertical, 9)
+            .frame(minHeight: 40)
+        case .checking:
+            SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))", detail: "Checking for updates…") {
+                ProgressView().controlSize(.small)
+            }
+        default:
+            SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))",
+                        detail: { if case .failed(let m) = updater.status { return m } else { return nil } }()) {
+                Button("Check for Updates…") { updater.check() }.disabled(!updater.canCheck)
+            }
+        }
+    }
+}
+
+/// The primary action: installs the ready update, quits and relaunches. While that runs, a native spinner and
+/// "Installing…". Ember with Ink text (white on Ember is about 3.3:1; Ink is about 5.6:1).
+struct InstallNowButton: View {
+    @ObservedObject private var updater = Updater.shared
+
+    var body: some View {
+        if updater.status == .installing {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("Installing…").font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
+            }
+        } else {
+            Button { updater.installNow() } label: {
+                Text("Install Now").foregroundStyle(Color(nsColor: NSColor(srgbRed: 0x26 / 255, green: 0x23 / 255, blue: 0x1F / 255, alpha: 1)))
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(SettingsColor.ember)
         }
     }
 }
@@ -1141,6 +1205,7 @@ struct AboutTab: View {
         case .checking: "Checking for updates…"
         case .upToDate: "Up to date"
         case .available(let v): "Version \(v) is available"
+        case .installing: "Installing \(updater.availableVersion ?? "the update")…"
         case .failed: "Couldn’t check for updates"
         }
     }
@@ -1157,8 +1222,8 @@ struct AboutTab: View {
     @ViewBuilder private var updateControl: some View {
         switch updater.status {
         case .checking: TallyLoader(size: 18, ink: SettingsColor.text)
-        case .available: Button("Install") { updater.checkForUpdates() }.disabled(!updater.canCheck)
-        default: Button("Check Now") { updater.probe() }.disabled(!updater.canCheck)
+        case .available, .installing: InstallNowButton()
+        default: Button("Check Now") { updater.check() }.disabled(!updater.canCheck)
         }
     }
 

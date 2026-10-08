@@ -47,6 +47,12 @@ enum MacGallery {
                          to: "\(dir)/settings-\(tab.rawValue.replacingOccurrences(of: " ", with: ""))-\(name).png")
             }
         }
+        // Updates with an update ready (3g).
+        Updater.shared.previewAvailable("0.0.9", build: "9")
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            snapshot(SettingsView(model: model, tab: .updates), size: NSSize(width: 760, height: 600), appearance: appearance,
+                     to: "\(dir)/settings-Updates-available-\(name).png")
+        }
         // The whole Usage pane, below the fold too.
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
             snapshot(SettingsView(model: model, tab: .usage), size: NSSize(width: 760, height: 980), appearance: appearance,

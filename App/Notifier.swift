@@ -13,11 +13,11 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         handler([.banner, .sound])
     }
 
-    /// Clicking the "update available" notification opens Sparkle's update window.
+    /// Clicking an "update available" notification (posted by versions before 0.0.9) opens Settings → Updates.
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         if response.notification.request.identifier.hasPrefix("update-") {
-            Task { @MainActor in Updater.shared.checkForUpdates() }
+            Task { @MainActor in SettingsWindow.shared.show(tab: .updates) }
         }
         completionHandler()
     }
@@ -117,11 +117,6 @@ enum Notifier {
     static func sendTest() {
         post(id: "test", title: "Clausage notifications are on", subtitle: nil,
              body: "You’ll see usage alerts like this one.", after: 1)
-    }
-
-    static func postUpdateAvailable(version: String) {
-        post(id: "update-\(version)", title: "Clausage \(version) is available", subtitle: nil,
-             body: "Click to update.", after: 1)
     }
 
     static func postOutage(id: String, title: String, body: String) {

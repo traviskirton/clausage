@@ -75,7 +75,7 @@ struct UsageView: View {
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                 }
                 if let v = updater.availableVersion {
-                    Button { updater.checkForUpdates() } label: {
+                    Button { model.closePopover(); SettingsWindow.shared.show(tab: .updates) } label: {
                         Text("Update available · \(v)").font(.system(size: 10.5, weight: .medium))
                             .foregroundStyle(Color("EmberDeep")).frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 6).contentShape(Rectangle())

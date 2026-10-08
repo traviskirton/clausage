@@ -1,13 +1,17 @@
 import SwiftUI
 
 @MainActor
-final class SettingsWindow: NSObject, NSWindowDelegate {
+final class SettingsWindow: NSObject, NSWindowDelegate, ObservableObject {
     static let shared = SettingsWindow()
     private var window: NSWindow?
+    /// A pane to switch to in an open window (e.g. Updates when an update is ready).
+    @Published private(set) var requestedTab: SettingsTab?
 
-    func show() {
+    /// Opens Settings (on Usage the first time), or brings it forward. `tab` picks the pane, even if it's already open.
+    func show(tab: SettingsTab? = nil) {
+        requestedTab = tab      // nil: a fresh window starts on Usage, an open one stays where it is
         if window == nil {
-            let host = NSHostingView(rootView: SettingsView(model: .shared))
+            let host = NSHostingView(rootView: SettingsView(model: .shared, tab: tab ?? .usage))
             // Don't let SwiftUI size the window: it adds the title bar's safe area (32pt) to the 600pt view.
             host.sizingOptions = []
             // Full-size content view + transparent title bar: the sidebar card runs to the top of the window with the
