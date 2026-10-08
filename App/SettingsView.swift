@@ -1095,7 +1095,6 @@ struct UpdatesTab: View {
                 Button { updater.check() } label: {
                     BusyLabel(title: "Check for Updates…", busyTitle: "Checking…", busy: updater.status == .checking)
                 }
-                .disabled(!updater.canCheck && updater.status != .checking)
             }
         }
     }
@@ -1239,7 +1238,6 @@ struct AboutTab: View {
             Button { updater.check() } label: {
                 BusyLabel(title: "Check Now", busyTitle: "Refreshing…", busy: updater.status == .checking)
             }
-            .disabled(!updater.canCheck && updater.status != .checking)
         }
     }
 

@@ -34,6 +34,10 @@ final class Updater: ObservableObject {
     private var installRequested = false
     /// Settings opens by itself once per version.
     private var openedSettingsFor: String?
+    /// When the last user-initiated check started: "Checking…" stays up at least `minimumCheck`, so a fast answer
+    /// doesn't flash.
+    private var checkStarted: Date?
+    private let minimumCheck: TimeInterval = 0.8
 
     private init() {
         controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: updaterDelegate, userDriverDelegate: driverDelegate)
@@ -64,8 +68,9 @@ final class Updater: ObservableObject {
     /// "Check for Updates…" and About's "Check Now": checks (and downloads) in the background; the result lands in
     /// `status`, and a found update shows up in Updates when it's ready.
     func check() {
-        guard !controller.updater.sessionInProgress else { return }
+        guard status != .checking, !controller.updater.sessionInProgress else { return }
         status = .checking
+        checkStarted = Date()
         controller.updater.checkForUpdatesInBackground()
     }
 
@@ -104,6 +109,14 @@ final class Updater: ObservableObject {
     }
 
     fileprivate func finished(_ result: Status) {
+        if status == .checking, let started = checkStarted {
+            let left = minimumCheck - Date().timeIntervalSince(started)
+            if left > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + left) { [weak self] in self?.finished(result) }
+                return
+            }
+            checkStarted = nil
+        }
         lastChecked = controller.updater.lastUpdateCheckDate ?? Date()
         switch status {
         case .available: return      // stays until it's installed
