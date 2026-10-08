@@ -160,7 +160,8 @@ struct SignInSheet: View {
             .accessibilityLabel("Secure page on claude.ai")
 
             ZStack(alignment: .bottom) {
-                ClaudeWebView(onSignedIn: { Task { await finish() } }, onBlocked: { blocked = $0 })
+                ClaudeWebView(onSignedIn: { Task { await finish() } },
+                              onBlocked: { url in if !SignInPolicy.isGoogleOneTap(url) { blocked = url } })   // One Tap is meant to be blocked
                 #if DEBUG
                 if let blocked {
                     Text("Blocked: \(blocked.host ?? blocked.absoluteString)\(blocked.host == nil ? "" : blocked.path)")
