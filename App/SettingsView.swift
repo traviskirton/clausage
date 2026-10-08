@@ -294,7 +294,6 @@ struct SettingsSegmented<T: Hashable>: View {
         Segments(label: label, labels: options.map(\.1),
                  selected: options.firstIndex { $0.0 == selection } ?? -1,
                  onSelect: { i in if options.indices.contains(i) { selection = options[i].0 } })
-            .controlSize(.large)      // macOS 26 draws large controls as capsules
             .fixedSize()
     }
 
@@ -309,6 +308,7 @@ struct SettingsSegmented<T: Hashable>: View {
         func makeNSView(context: Context) -> NSSegmentedControl {
             let c = NSSegmentedControl(labels: labels, trackingMode: .selectOne,
                                        target: context.coordinator, action: #selector(Target.changed(_:)))
+            c.segmentStyle = .rounded
             c.selectedSegmentBezelColor = NSColor(SettingsColor.ember)
             c.setAccessibilityLabel(label)
             return c
