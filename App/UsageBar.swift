@@ -1,54 +1,20 @@
 import SwiftUI
 
-enum Palette {
-    static let panelDark = Color(red: 0.137, green: 0.141, blue: 0.161)     // ≈ #232429
-    static let panelLight = Color(red: 0.965, green: 0.965, blue: 0.969)    // ≈ #F6F6F7
-    static let track = Color.primary.opacity(0.07)      // white in dark mode, black in light mode
-    static let blue = Color(red: 0.27, green: 0.47, blue: 0.97)
-    static let orange = Color(red: 0.88, green: 0.56, blue: 0.20)
-    static let red = Color(red: 0.90, green: 0.30, blue: 0.30)
-
-    static func panel(_ scheme: ColorScheme) -> Color { scheme == .dark ? panelDark : panelLight }
-
-    /// Forecast line colors, darkened in light mode for 4.5:1 contrast.
-    static func warningText(_ scheme: ColorScheme) -> Color { Color("NearText") }
-    static func criticalText(_ scheme: ColorScheme) -> Color { Color("CriticalText") }
-}
-
-/// One limit: name and percent, a 6pt bar with a pace tick, and a forecast line when it is projected to run out.
+/// One popover limit: name and percent, a 6pt bar with a pace tick, and a forecast line when it is projected to run out.
 /// Hovering the row crossfades the name to when it resets.
 struct UsageBar: View {
     let limit: UsageLimit
     @State private var hovering = false
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var level: Forecast.Level { Forecast.level(limit) }
     private var hit: Date? { Forecast.hitDate(limit) }
     /// Short row name: "Current session", "All models", "Fable".
-    private var name: String { limit.title.replacingOccurrences(of: "Weekly · ", with: "") }
+    private var name: String { Forecast.fullName(limit) }
 
-    /// Calm bars are warm gray so orange and red stand out; no accent color, so no accent-clash zebra.
-    private var fill: Color {
-        switch level {
-        case .normal: return Color("CalmBar")
-        case .warning: return Color("NearFill")
-        case .critical: return Color("CriticalFill")
-        }
-    }
+    private var forecastText: String? { Forecast.forecastText(limit) }
 
-    private var forecastColor: Color { level == .critical ? Palette.criticalText(scheme) : Palette.warningText(scheme) }
-
-    private var forecastText: String? {
-        guard level != .normal, let hit else { return nil }
-        return "Out ~\(Forecast.timeText(hit, window: limit.windowLength))"
-    }
-
-    private var hoverText: String {
-        if let r = limit.resetsAt { return "Resets \(Forecast.timeText(r, window: limit.windowLength))" }
-        return name
-    }
+    private var hoverText: String { Forecast.resetText(limit) ?? name }
 
     private var accessibilityText: String {
         var s = "\(name), \(Int(limit.percent.rounded())) percent used"
@@ -61,12 +27,6 @@ struct UsageBar: View {
         return s
     }
 
-    /// Sand tracks (a translucent warm white in dark mode); stronger with Increase Contrast.
-    private var trackColor: Color {
-        if contrast == .increased { return Color("Ink").opacity(scheme == .dark ? 0.30 : 0.20) }
-        return Color("Sand")
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
@@ -74,19 +34,19 @@ struct UsageBar: View {
                     Text(name).opacity(hovering ? 0 : 1)
                     Text(hoverText).opacity(hovering ? 1 : 0)
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .semibold))
                 Spacer(minLength: 6)
                 Text("\(Int(limit.percent.rounded()))%")
-                    .font(.clausagePercent(13.5))      // Bricolage with fixed-width numerals; never colored
+                    .font(.clausagePercent(15)).brandTracking(-0.03, size: 15)      // never colored
             }
-            .frame(height: 13)      // line box ≈ font size, so the 5pt/10pt gaps read as 5pt/10pt
+            .frame(height: 15)      // line box ≈ font size, so the 5pt/12pt gaps read as 5pt/12pt
             .foregroundStyle(Color("Ink"))
 
-            bar
+            LimitBar(limit: limit, height: 6, tick: 10)
 
             if let text = forecastText {
                 Text(text)
-                    .font(.system(size: 11)).foregroundStyle(forecastColor)
+                    .font(.system(size: 11)).foregroundStyle(UsageColor.text(level))
                     .frame(height: 11)
                     .transition(.opacity)
             }
@@ -98,25 +58,44 @@ struct UsageBar: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }
+}
 
-    private var bar: some View {
+/// A capsule bar: Sand track, the level's fill (warm gray, orange at 85%, red at 95%), and a 2pt Ink pace tick that
+/// stands `tick` tall, with a transparent 1.5pt knock-out around it so it reads on any surface.
+struct LimitBar: View {
+    let limit: UsageLimit
+    var height: CGFloat = 6
+    var tick: CGFloat = 10
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var level: Forecast.Level { Forecast.level(limit) }
+
+    /// Sand tracks (a translucent warm white in dark mode); stronger with Increase Contrast.
+    private var trackColor: Color {
+        if contrast == .increased { return Color("Ink").opacity(scheme == .dark ? 0.30 : 0.20) }
+        return Color("Sand")
+    }
+
+    var body: some View {
         GeometryReader { g in
             let fillWidth = g.size.width * min(max(limit.percent, 0), 100) / 100
             let pace = Forecast.elapsed(limit)
             ZStack(alignment: .leading) {
                 trackColor
-                Rectangle().fill(fill).frame(width: fillWidth)
+                Capsule().fill(UsageColor.fill(level)).frame(width: max(fillWidth, limit.percent > 0 ? height : 0))
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.4), value: limit.percent)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: level)
             // rounded bar shape, with a transparent 1.5pt knock-out around the pace tick
             .mask {
-                // The knock-out is an overlay so its 13pt height can't resize the 6pt rounded shape.
-                RoundedRectangle(cornerRadius: 3).fill(Color.black)
+                // The knock-out is an overlay so its height can't resize the bar's capsule.
+                Capsule().fill(Color.black)
                     .overlay(alignment: .leading) {
                         if let pace, contrast != .increased {
-                            RoundedRectangle(cornerRadius: 2.5)
-                                .frame(width: 5, height: 13)
+                            Capsule()
+                                .frame(width: 5, height: tick + 3)
                                 .offset(x: g.size.width * pace - 2.5)
                                 .blendMode(.destinationOut)
                         }
@@ -125,22 +104,13 @@ struct UsageBar: View {
             }
             .overlay(alignment: .leading) {
                 if let pace {
-                    PaceTick(color: Color("Ink"))
+                    Capsule().fill(Color("Ink"))
+                        .frame(width: 2, height: tick)
+                        .frame(width: 2, height: height)
                         .offset(x: g.size.width * pace - 1)
                 }
             }
         }
-        .frame(height: 6)
-    }
-}
-
-/// 2×10pt tick centered on the bar (the bar knocks out a 1.5pt ring around it, see `bar`).
-private struct PaceTick: View {
-    let color: Color
-    var body: some View {
-        RoundedRectangle(cornerRadius: 1).fill(color)
-            .frame(width: 2, height: 10)
-            .frame(width: 2, height: 6)
-            .fixedSize()
+        .frame(height: height)
     }
 }

@@ -34,12 +34,14 @@ targets:
   Clausage:
     type: application
     platform: macOS
-    sources: [App, Shared, Resources, design/clausage-icon.icon]
+    # The Settings Usage pane draws the iPhone's running-total chart, so it takes those two SharedUI files.
+    sources: [App, Shared, Resources, design/clausage-icon.icon, SharedUI/RunningTotalChart.swift, SharedUI/UsageStyle.swift]
     settings:
       base:
         PRODUCT_NAME: Clausage
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage
         ASSETCATALOG_COMPILER_APPICON_NAME: clausage-icon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities

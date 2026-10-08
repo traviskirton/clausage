@@ -3,41 +3,44 @@ import KeyboardShortcuts
 import UserNotifications
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case general = "General", accounts = "Accounts", notifications = "Notifications", claudeCode = "Claude Code", updates = "Updates", about = "About"
+    case usage = "Usage", claudeCode = "Claude Code"
+    case general = "General", accounts = "Accounts", notifications = "Notifications", updates = "Updates", about = "About"
     var id: String { rawValue }
 
     var symbol: String {
         switch self {
-        case .general: "gearshape.fill"
-        case .accounts: "person.fill"
-        case .notifications: "bell.fill"
-        case .claudeCode: "terminal.fill"
-        case .updates: "arrow.down.circle.fill"
-        case .about: "info.circle.fill"
+        case .usage: "chart.xyaxis.line"
+        case .claudeCode: "terminal"
+        case .general: "gearshape"
+        case .accounts: "person.crop.circle"
+        case .notifications: "bell"
+        case .updates: "arrow.down.circle"
+        case .about: "info.circle"
         }
     }
 }
 
-/// Settings colors. Every selected or on state is Ember in both appearances; nothing in Settings uses the system
-/// accent. Unselected controls sit on a faint fill of the text color. Dark mode has its own warmer surfaces.
+/// Settings colors. Ember is the app's AccentColor, so native switches and the focus ring pick it up; the tokens here
+/// are for what Settings draws itself. Dark mode has its own warmer surfaces.
 enum SettingsColor {
     static let window = dynamic(0xF7EEDD, dark: 0x24211E)
     static let card = dynamic(0xF2E7D3, dark: 0x2D2925)
     static let hairline = dynamic(0x26231F, 0.10, dark: 0xF4EDE2, 0.09)
     static let text = dynamic(0x26231F, dark: 0xF4EDE2)
     static let secondary = dynamic(0x766E64, dark: 0xADA497)
-    static let ember = rgb(0xC23B14)
+    static let tertiary = dynamic(0x8A8278, dark: 0x8F867A)
+    static let ember = rgb(0xFF4A1C)
     static let onEmber = Color.white
-    /// Unselected segment, chip, picker, shortcut field and button.
+    /// Plan chip in pane headers.
+    static let chip = dynamic(0xE8DFCF, dark: 0xF4EDE2, 0.08)
+    /// Unselected threshold chip.
     static let control = dynamic(0x26231F, 0.07, dark: 0xF4EDE2, 0.08)
-    static let selectedRow = dynamic(0xC23B14, 0.12, dark: 0xE26034, 0.20)
-    static let tile = dynamic(0x8A8278, dark: 0x6E665C)
-    static let tileGlyph = dynamic(0xFFFCF6, dark: 0xF4EDE2)
-    static let switchOff = dynamic(0x26231F, 0.18, dark: 0xF4EDE2, 0.16)
-    static let knobOff = dynamic(0xFFFFFF, dark: 0xCFC6B8)
-    static let link = dynamic(0xC23B14, dark: 0xFF8A5C)
-
-    static var textNS: NSColor { ns(0x26231F, 1, dark: 0xF4EDE2, 1) }
+    static let selectedRow = dynamic(0xFF4A1C, 0.12, dark: 0xFF4A1C, 0.20)
+    static let tile = dynamic(0x8A8278, dark: 0x8F867A)
+    static let link = dynamic(0xC23B14, dark: 0xFF8A63)
+    /// The running-total chart's Paper card and its 1pt inset edge.
+    static let chartCard = dynamic(0xFFFCF6, dark: 0x24211E)
+    static let chartEdge = dynamic(0xEAE1D2, dark: 0xF4EDE2, 0.10)
 
     private static func rgb(_ hex: Int, _ alpha: Double = 1) -> Color {
         Color(.sRGB, red: Double(hex >> 16 & 0xFF) / 255, green: Double(hex >> 8 & 0xFF) / 255,
@@ -52,7 +55,8 @@ enum SettingsColor {
         return NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? c(dark, da) : c(light, la) }
     }
 
-    private static func dynamic(_ light: Int, _ la: CGFloat = 1, dark: Int, _ da: CGFloat = 1) -> Color {
+    /// A color with light and dark values, resolved by the view's appearance (no color-scheme branching in views).
+    static func dynamic(_ light: Int, _ la: CGFloat = 1, dark: Int, _ da: CGFloat = 1) -> Color {
         Color(nsColor: ns(light, la, dark: dark, da))
     }
 }
@@ -66,17 +70,18 @@ enum SettingsSidebar {
     static let cardPadding: CGFloat = 10      // rows from the card edge
     static let rowPadding: CGFloat = 8        // tile from the row edge
     static let rowHeight: CGFloat = 36
-    /// Slot for the traffic lights (window y 19–33): General's row starts 14pt below them.
+    /// Slot for the traffic lights (window y 19–33): the first row starts 14pt below them.
     static let buttonsSlot: CGFloat = 26
 }
 
-/// The Settings window: an inset sidebar card (About pinned to the bottom) and content panes of section labels above
-/// group boxes. Selected states are Ember; controls are drawn here rather than native so no system blue shows through.
+/// The Settings window: an inset sidebar card (Usage and Claude Code, a divider, the preferences, About pinned to the
+/// bottom) and content panes with a shared header (title and plan chip) above labeled group boxes. Controls are native,
+/// tinted Ember through the app's AccentColor.
 struct SettingsView: View {
     @ObservedObject var model: UsageModel
     @State private var tab: SettingsTab
 
-    init(model: UsageModel, tab: SettingsTab = .general) {
+    init(model: UsageModel, tab: SettingsTab = .usage) {
         self.model = model
         _tab = State(initialValue: tab)
     }
@@ -84,33 +89,58 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            if tab == .about {
-                AboutTab().padding(.leading, 12).padding(.trailing, 20).padding(.vertical, 20)
-            } else {
-                ScrollView {
+            Group {
+                if tab == .about {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(tab.rawValue).font(.system(size: 17, weight: .bold)).foregroundStyle(SettingsColor.text)
-                            .frame(height: 22).padding(.top, 12).padding(.bottom, 16)
-                            .accessibilityAddTraits(.isHeader)
-                        pane
+                        header
+                        AboutTab()
                     }
-                    .padding(.leading, 12).padding(.trailing, 20).padding(.bottom, 20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 20)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            header
+                            pane
+                        }
+                        .padding(.bottom, 20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .scrollIndicators(.automatic)
                 }
-                .scrollIndicators(.automatic)
             }
+            .padding(.leading, 12).padding(.trailing, 20)
         }
         .foregroundStyle(SettingsColor.text)
         .background(SettingsColor.window)
         .tint(SettingsColor.ember)
-        .buttonStyle(SoftButtonStyle())
-        .focusEffectDisabledCompat()      // the focus ring is the system accent
         .frame(maxWidth: .infinity, maxHeight: .infinity)      // the window sets the size (760 × 600); a fixed size here makes SwiftUI add the title bar to it
         .ignoresSafeArea()      // run under the transparent title bar, so the traffic lights land inside the sidebar card
     }
 
+    /// The pane title (SF 20 bold) and, on the trailing side, the plan chip.
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(tab.rawValue).font(.system(size: 20, weight: .bold)).tracking(-0.2)
+                .foregroundStyle(SettingsColor.text)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if let plan = model.activeState?.plan {
+                Text(plan.badge)
+                    .font(.clausageDisplay(12))
+                    .foregroundStyle(SettingsColor.text)
+                    .padding(.top, 3).padding(.bottom, 4).padding(.horizontal, 9)
+                    .background(SettingsColor.chip, in: Capsule())
+                    .lineLimit(1).fixedSize()
+                    .accessibilityLabel("Plan: \(plan.badge)")
+            }
+        }
+        .frame(height: 26)
+        .padding(.top, 14).padding(.bottom, 14)
+    }
+
     @ViewBuilder private var pane: some View {
         switch tab {
+        case .usage: UsageTab(model: model)
         case .general: GeneralTab(model: model)
         case .accounts: AccountsTab(model: model)
         case .notifications: NotificationsTab()
@@ -124,7 +154,10 @@ struct SettingsView: View {
         let m = SettingsSidebar.self
         return VStack(alignment: .leading, spacing: 3) {
             Color.clear.frame(height: m.buttonsSlot)     // the window's traffic lights
-            ForEach(SettingsTab.allCases.filter { $0 != .about }) { item($0) }
+            item(.usage)
+            item(.claudeCode)
+            Divider().overlay(SettingsColor.hairline).padding(.horizontal, m.rowPadding).padding(.vertical, 6)
+            ForEach([SettingsTab.general, .accounts, .notifications, .updates]) { item($0) }
             Spacer()
             item(.about)
         }
@@ -141,6 +174,8 @@ struct SettingsView: View {
         .padding(m.cardInset)
     }
 
+    /// A sidebar row: the white glyph on a rounded tile (Ink 3, Ember when selected) and the name, on a 12% Ember wash
+    /// when selected (20% in dark mode).
     private func item(_ t: SettingsTab) -> some View {
         let selected = tab == t
         return Button { tab = t } label: {
@@ -148,7 +183,7 @@ struct SettingsView: View {
                 Image(systemName: t.symbol)
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(selected ? SettingsColor.onEmber : SettingsColor.tileGlyph)
+                    .foregroundStyle(.white)
                     .frame(width: 22, height: 22)
                     .background(selected ? SettingsColor.ember : SettingsColor.tile, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 Text(t.rawValue).font(.system(size: 13, weight: selected ? .medium : .regular)).foregroundStyle(SettingsColor.text)
@@ -166,37 +201,42 @@ struct SettingsView: View {
 
 // MARK: Building blocks
 
-/// A section: 13pt semibold label above a card-colored box (radius 12) whose rows are split by hairlines.
+/// A group: a 13pt semibold label 7pt above a card-colored box (radius 12) whose rows are split by hairlines.
+/// Groups are 16pt apart.
 struct SettingsSection<Content: View>: View {
     let title: String?
     var footer: String? = nil
+    /// Stretch the box to the height it's offered (side-by-side groups of equal height).
+    var fills = false
     @ViewBuilder let content: Content
 
-    init(_ title: String?, footer: String? = nil, @ViewBuilder content: () -> Content) {
+    init(_ title: String?, footer: String? = nil, fills: Bool = false, @ViewBuilder content: () -> Content) {
         self.title = title
         self.footer = footer
+        self.fills = fills
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             if let title {
                 Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
                     .accessibilityAddTraits(.isHeader)
             }
             VStack(spacing: 0) { content }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: fills ? .infinity : nil, alignment: .topLeading)
                 .background(SettingsColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             if let footer {
                 Text(footer).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
                     .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 4)
             }
         }
-        .padding(.bottom, 20)
+        .padding(.bottom, 16)
     }
 }
 
-/// Hairline between rows inside a section box.
+/// Hairline between rows inside a group box.
 struct RowDivider: View {
     var body: some View { Rectangle().fill(SettingsColor.hairline).frame(height: 0.5) }
 }
@@ -231,57 +271,79 @@ struct SettingsRow<Control: View>: View {
     }
 }
 
-/// Switch: Ember track and white knob when on; a faint track (darker in light mode, so it reads on the card) when off.
-struct BrandSwitch: View {
+/// Native switch, label hidden (the row shows it). Ember when on, from the AccentColor.
+struct SettingsSwitch: View {
     let label: String
     @Binding var isOn: Bool
-    @Environment(\.isEnabled) private var enabled
 
     var body: some View {
-        Button { withAnimation(.easeOut(duration: 0.15)) { isOn.toggle() } } label: {
-            ZStack(alignment: isOn ? .trailing : .leading) {
-                Capsule().fill(isOn ? SettingsColor.ember : SettingsColor.switchOff)
-                Capsule().fill(isOn ? SettingsColor.onEmber : SettingsColor.knobOff)
-                    .frame(width: 24, height: 18)
-                    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
-                    .padding(2)
-            }
-            .frame(width: 38, height: 22)
-            .opacity(enabled ? 1 : 0.45)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityRepresentation { Toggle(label, isOn: $isOn) }
+        Toggle(label, isOn: $isOn).toggleStyle(.switch).labelsHidden().controlSize(.small)
     }
 }
 
-/// Segmented control: a faint track; the selected segment is Ember with white text.
-struct BrandSegmented<T: Hashable>: View {
+/// Native segmented control with the selected segment in Ember (`selectedSegmentBezelColor`; SwiftUI's segmented
+/// picker always draws a neutral selection on macOS).
+struct SettingsSegmented<T: Hashable>: View {
+    let label: String
     @Binding var selection: T
     let options: [(T, String)]
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
-                let on = o.0 == selection
-                Button { withAnimation(.easeInOut(duration: 0.2)) { selection = o.0 } } label: {
-                    Text(o.1).font(.system(size: 12, weight: .medium)).monospacedDigit()
-                        .foregroundStyle(on ? SettingsColor.onEmber : SettingsColor.text)
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(on ? SettingsColor.ember : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? [.isSelected] : [])
-            }
+        Segments(label: label, labels: options.map(\.1),
+                 selected: options.firstIndex { $0.0 == selection } ?? -1,
+                 onSelect: { i in if options.indices.contains(i) { selection = options[i].0 } })
+            .fixedSize()
+    }
+
+    private struct Segments: NSViewRepresentable {
+        let label: String
+        let labels: [String]
+        let selected: Int
+        let onSelect: (Int) -> Void
+
+        func makeCoordinator() -> Target { Target() }
+
+        func makeNSView(context: Context) -> NSSegmentedControl {
+            let c = NSSegmentedControl(labels: labels, trackingMode: .selectOne,
+                                       target: context.coordinator, action: #selector(Target.changed(_:)))
+            c.selectedSegmentBezelColor = NSColor(SettingsColor.ember)
+            c.setAccessibilityLabel(label)
+            return c
         }
-        .padding(2)
-        .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+        func updateNSView(_ c: NSSegmentedControl, context: Context) {
+            context.coordinator.onSelect = onSelect
+            if c.segmentCount != labels.count { c.segmentCount = labels.count }
+            for (i, l) in labels.enumerated() where c.label(forSegment: i) != l { c.setLabel(l, forSegment: i) }
+            if c.selectedSegment != selected { c.selectedSegment = selected }
+            c.isEnabled = context.environment.isEnabled
+        }
+
+        final class Target: NSObject {
+            var onSelect: (Int) -> Void = { _ in }
+            @objc func changed(_ c: NSSegmentedControl) { onSelect(c.selectedSegment) }
+        }
+    }
+}
+
+/// Native pop-up button, label hidden.
+struct SettingsMenuPicker<T: Hashable>: View {
+    let label: String
+    @Binding var selection: T
+    let options: [(T, String)]
+
+    var body: some View {
+        Picker(label, selection: $selection) {
+            ForEach(Array(options.enumerated()), id: \.offset) { _, o in Text(o.1).tag(o.0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
         .fixedSize()
     }
 }
 
-/// Capsule toggle: Ember with white text when on, the faint control fill when off.
+/// Threshold chip (no native control does several-of-a-set as capsules): Ember with white text when on, a faint fill
+/// of the text color when off.
 struct ChipToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View { Chip(configuration: configuration) }
 
@@ -304,86 +366,220 @@ struct ChipToggleStyle: ToggleStyle {
     }
 }
 
-/// Push buttons in Settings: the faint control fill with text-colored labels.
-struct SoftButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { SoftButton(configuration: configuration) }
+// MARK: Usage (the landing pane)
 
-    private struct SoftButton: View {
-        let configuration: ButtonStyleConfiguration
-        @Environment(\.isEnabled) private var enabled
-        var body: some View {
-            configuration.label
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(SettingsColor.text)
-                .padding(.horizontal, 12).padding(.vertical, 5)
-                .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(SettingsColor.text.opacity(configuration.isPressed ? 0.08 : 0)))
-                .opacity(enabled ? 1 : 0.45)
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+/// Everything Clausage knows on one page, in the iPhone's order: limits, the week's running total with its forecast,
+/// then this week by product and usage credits side by side.
+struct UsageTab: View {
+    @ObservedObject var model: UsageModel
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        if !model.connected {
+            SettingsSection(nil) {
+                SettingsRow("Not connected", detail: "Sign in to see your plan usage.") {
+                    Button("Connect…") { model.connect() }
+                }
+            }
+        } else if model.activeIsFree {
+            freeBody
+        } else {
+            content
         }
+    }
+
+    @ViewBuilder private var content: some View {
+        let st = model.activeState
+        let limits = Forecast.ordered(model.limits)
+        VStack(alignment: .leading, spacing: 0) {
+            if model.activeSignedOut, let a = model.active {
+                SettingsSection(nil) {
+                    SettingsRow("Signed out", detail: "Sign in again to keep your usage up to date.") {
+                        Button("Sign In…") { model.reconnect(a) }
+                    }
+                }
+            } else if let e = model.error {
+                Text(e).font(.system(size: 11)).foregroundStyle(Color("CriticalText"))
+                    .fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
+            }
+
+            SettingsSection("Limits") {
+                if limits.isEmpty {
+                    SettingsRow(st?.updated == nil ? "Counting your usage…" : "Nothing to count",
+                                detail: st?.updated == nil ? nil : "Your org didn’t set any plan limits.") { EmptyView() }
+                }
+                ForEach(Array(limits.enumerated()), id: \.element.id) { i, l in
+                    if i > 0 { RowDivider() }
+                    PaneLimitRow(limit: l)
+                }
+            }
+
+            if let w = st?.weekly {
+                let level = limits.first { $0.kind == "weekly_all" }.map(Forecast.level) ?? .normal
+                week(WeeklyChart.make(history: model.history, window: w, now: Date()), level: level)
+            }
+
+            let breakdown = st?.breakdown.flatMap { $0.rows.isEmpty ? nil : $0 }
+            let credits = st?.credits
+            if breakdown != nil || credits != nil {
+                HStack(alignment: .top, spacing: 14) {
+                    if let breakdown { product(breakdown) }
+                    if let credits { creditsBox(credits) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The running total on a Paper card, then the forecast in the house voice.
+    private func week(_ chart: WeeklyChart?, level: Forecast.Level) -> some View {
+        SettingsSection("All models this week") {
+            VStack(alignment: .leading, spacing: 12) {
+                if let chart {
+                    RunningTotalChart(chart: chart, level: level)
+                        .frame(height: 150)
+                        .padding(.horizontal, 4).padding(.vertical, 6)
+                        .background(SettingsColor.chartCard, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(SettingsColor.chartEdge, lineWidth: 1))
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let headline = chart.headline {
+                            Text(headline).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
+                        }
+                        Text(chart.caption).font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .combine)
+                } else {
+                    NotEnoughYet()
+                }
+            }
+            .padding(.vertical, 12)
+        }
+    }
+
+    /// The biggest share large, then the rest, high to low.
+    private func product(_ b: ProductBreakdown) -> some View {
+        SettingsSection("This week by product", fills: true) {
+            if let top = b.rows.first {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(Int(top.percent.rounded()))%")
+                        .font(.clausagePercent(34)).brandTracking(-0.04, size: 34).foregroundStyle(SettingsColor.text)
+                    Text("came from \(top.name)").font(.system(size: 12, weight: .medium)).foregroundStyle(SettingsColor.text)
+                        .padding(.top, 2)
+                    if b.rows.count > 1 {
+                        RowDivider().padding(.top, 10).padding(.bottom, 8)
+                        HStack(spacing: 0) {
+                            ForEach(Array(b.rows.dropFirst().enumerated()), id: \.element.id) { i, row in
+                                if i > 0 { Spacer(minLength: 8) }
+                                (Text(row.name + " ").font(.system(size: 11)).foregroundColor(SettingsColor.secondary)
+                                 + Text("\(Int(row.percent.rounded()))%").font(.clausagePercent(12)).foregroundColor(SettingsColor.text))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 12)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(b.rows.map { "\($0.name) \(Int($0.percent.rounded())) percent" }.joined(separator: ", "))
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Read-only: on or off, the amounts, and a link to claude.ai to change them.
+    private func creditsBox(_ c: UsageCredits) -> some View {
+        SettingsSection("Usage credits", fills: true) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(c.stateText).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
+                if !c.detailText.isEmpty {
+                    Text(c.detailText).font(.system(size: 11)).foregroundStyle(SettingsColor.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 12)
+                Link(destination: URL(string: "https://claude.ai/settings/usage")!) {
+                    HStack(spacing: 3) {
+                        Text("Manage")
+                        Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold))
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(SettingsColor.link)
+                }
+                .accessibilityHint("Opens claude.ai usage settings")
+            }
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+            .padding(.vertical, 12)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// claude.ai has no usage page on Free: the empty tally, why, and one way forward.
+    private var freeBody: some View {
+        VStack(spacing: 8) {
+            EmptyTally(size: 40)
+            Text(FreePlanCopy.headline).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsColor.text)
+            Text(FreePlanCopy.bodyScreen)
+                .font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
+                .multilineTextAlignment(.center).frame(maxWidth: 360).fixedSize(horizontal: false, vertical: true)
+            if ClaudeSession.supportsMultipleAccounts, let a = model.active {
+                Button(FreePlanCopy.switchAccount) { model.switchAccount(from: a) }.padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28).padding(.horizontal, 20)
+        .background(SettingsColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// Pop-up menu drawn like an unselected control: value and an up/down chevron on the faint fill.
-struct BrandMenuPicker<T: Hashable>: View {
-    @Binding var selection: T
-    let options: [(T, String)]
+/// A limit on the Usage pane: name and percent, an 8pt bar with a 2×12pt tick, then "Resets …" and, when the forecast
+/// runs out before the reset, "Out ~…" on the trailing side.
+struct PaneLimitRow: View {
+    let limit: UsageLimit
+
+    private var level: Forecast.Level { Forecast.level(limit) }
+    private var runout: String? {
+        Forecast.hitDate(limit).map { "Out ~\(Forecast.timeText($0, window: limit.windowLength))" }
+    }
 
     var body: some View {
-        Menu {
-            ForEach(Array(options.enumerated()), id: \.offset) { _, o in
-                Toggle(o.1, isOn: Binding(get: { selection == o.0 }, set: { if $0 { selection = o.0 } }))
-            }
-        } label: {
-            HStack(spacing: 14) {
-                Text(options.first { $0.0 == selection }?.1 ?? "").font(.system(size: 12))
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text(Forecast.fullName(limit)).font(.system(size: 13, weight: .semibold))
+                Spacer(minLength: 8)
+                Text("\(Int(limit.percent.rounded()))%").font(.clausagePercent(18)).brandTracking(-0.03, size: 18)
             }
             .foregroundStyle(SettingsColor.text)
-            .padding(.leading, 10).padding(.trailing, 8).padding(.vertical, 5)
-            .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .contentShape(Rectangle())
+            .frame(height: 18)
+            LimitBar(limit: limit, height: 8, tick: 12)
+            HStack {
+                if let r = Forecast.screenResetText(limit) {
+                    Text(r).foregroundStyle(SettingsColor.secondary)
+                }
+                Spacer(minLength: 8)
+                if let runout {
+                    Text(runout).fontWeight(.medium)
+                        .foregroundStyle(level == .critical ? Color("CriticalText") : Color("NearText"))
+                }
+            }
+            .font(.system(size: 11))
+            .lineLimit(1)
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-    }
-}
-
-/// The global-shortcut recorder without its native bezel (whose focus ring and highlight are system blue), on the
-/// faint control fill.
-struct ShortcutField: View {
-    let name: KeyboardShortcuts.Name
-    @Environment(\.isEnabled) private var enabled
-
-    var body: some View {
-        Field(name: name)
-            .frame(width: 108, height: 18)
-            .padding(.vertical, 2).padding(.leading, 8).padding(.trailing, 6)
-            .background(SettingsColor.control, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .opacity(enabled ? 1 : 0.45)
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
     }
 
-    private struct Field: NSViewRepresentable {
-        let name: KeyboardShortcuts.Name
-
-        func makeNSView(context: Context) -> KeyboardShortcuts.RecorderCocoa {
-            let r = KeyboardShortcuts.RecorderCocoa(for: name)
-            r.isBezeled = false
-            r.isBordered = false
-            r.drawsBackground = false
-            r.backgroundColor = .clear
-            r.focusRingType = .none
-            r.font = .systemFont(ofSize: 12, weight: .medium)
-            r.textColor = SettingsColor.textNS
-            return r
+    private var accessibilityText: String {
+        var s = "\(Forecast.fullName(limit)), \(Int(limit.percent.rounded())) percent used"
+        if let r = Forecast.screenResetText(limit) { s += ", " + r.lowercased() }
+        if let hit = Forecast.hitDate(limit) {
+            let when = limit.windowLength > 86_400
+                ? hit.formatted(.dateTime.weekday(.wide).hour().minute())
+                : hit.formatted(.dateTime.hour().minute())
+            s += ", runs out around \(when)"
         }
-
-        func updateNSView(_ r: KeyboardShortcuts.RecorderCocoa, context: Context) {
-            r.shortcutName = name
-        }
+        return s
     }
 }
 
@@ -406,20 +602,20 @@ struct GeneralTab: View {
         VStack(alignment: .leading, spacing: 0) {
             SettingsSection("Startup") {
                 SettingsRow("Launch at login") {
-                    BrandSwitch(label: "Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+                    SettingsSwitch(label: "Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
                 }
             }
 
             SettingsSection("Menu bar") {
                 SettingsRow("Show usage next to icon") {
-                    BrandSegmented(selection: $display, options: [("off", "Off"), ("percent", sessionLabel), ("bars", "Bars"), ("fill", "Fill")])
+                    SettingsSegmented(label: "Show usage next to icon", selection: $display, options: [("off", "Off"), ("percent", sessionLabel), ("bars", "Bars"), ("fill", "Fill")])
                 }
                 // Each option's own setting shows only while that option is chosen.
                 if display == "fill" {
                     VStack(spacing: 0) {
                         RowDivider()
                         SettingsRow("Fill logo base", detail: "White rays on a dark menu bar, dark rays on a light one. Auto follows the menu bar.") {
-                            BrandSegmented(selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")])
+                            SettingsSegmented(label: "Fill logo base", selection: $fillBase, options: [("auto", "Auto"), ("white", "White"), ("dark", "Dark")])
                         }
                     }
                     .transition(.opacity)
@@ -428,7 +624,7 @@ struct GeneralTab: View {
                     VStack(spacing: 0) {
                         RowDivider()
                         SettingsRow("Tint percent by pressure", detail: "Orange at 85%, red at 95% · uses highest limit") {
-                            BrandSwitch(label: "Tint percent by pressure", isOn: $tint)
+                            SettingsSwitch(label: "Tint percent by pressure", isOn: $tint)
                         }
                     }
                     .transition(.opacity)
@@ -437,13 +633,13 @@ struct GeneralTab: View {
 
             SettingsSection("Refresh & shortcuts") {
                 SettingsRow("Refresh every", detail: "Press ⌘R in the popover to refresh now.") {
-                    BrandSegmented(selection: $refresh, options: [(1, "1m"), (5, "5m"), (15, "15m"), (30, "30m")])
+                    SettingsSegmented(label: "Refresh every", selection: $refresh, options: [(1, "1m"), (5, "5m"), (15, "15m"), (30, "30m")])
                 }
                 RowDivider()
                 SettingsRow("Open popover from anywhere") {
                     HStack(spacing: 8) {
-                        ShortcutField(name: .openPopover)
-                        BrandSwitch(label: "Open popover from anywhere", isOn: $hotkey)
+                        KeyboardShortcuts.Recorder(for: .openPopover)
+                        SettingsSwitch(label: "Open popover from anywhere", isOn: $hotkey)
                     }
                 }
             }
@@ -536,7 +732,7 @@ struct ClaudeCodeTab: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 28).padding(.horizontal, 20)
-            .background(Color("Cream2"), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(SettingsColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityElement(children: .combine)
         }
     }
@@ -545,7 +741,7 @@ struct ClaudeCodeTab: View {
         SettingsSection(nil) {
             SettingsRow("Scan Claude Code sessions",
                         detail: "Reads ~/.claude on this Mac. Only totals are kept, never prompts or code, and nothing leaves this Mac.") {
-                BrandSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
+                SettingsSwitch(label: "Scan Claude Code sessions", isOn: Binding(get: { hasAccess }, set: setScanning))
             }
         }
     }
@@ -556,7 +752,7 @@ struct ClaudeCodeTab: View {
                 Text("\(week ? "Last 7 days" : "Last 24 hours") of Claude Code on this Mac. Shares overlap, so they don’t add up to 100%.")
                     .font(.system(size: 11)).foregroundStyle(SettingsColor.secondary).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                BrandSegmented(selection: $week, options: [(false, "Day"), (true, "Week")])
+                SettingsSegmented(label: "Period", selection: $week, options: [(false, "Day"), (true, "Week")])
             }
             .padding(.bottom, 16)
 
@@ -710,18 +906,18 @@ struct NotificationsTab: View {
                 RowDivider()
                 SettingsRow("Session is about to reset") {
                     HStack(spacing: 8) {
-                        BrandMenuPicker(selection: $soonMinutes, options: [5, 10, 15, 30].map { ($0, "\($0) min before") })
+                        SettingsMenuPicker(label: "Minutes before", selection: $soonMinutes, options: [5, 10, 15, 30].map { ($0, "\($0) min before") })
                             .disabled(!soon)
-                        BrandSwitch(label: "Session is about to reset", isOn: $soon)
+                        SettingsSwitch(label: "Session is about to reset", isOn: $soon)
                     }
                 }
                 RowDivider()
-                SettingsRow("A limit resets") { BrandSwitch(label: "A limit resets", isOn: $notifyReset) }
+                SettingsRow("A limit resets") { SettingsSwitch(label: "A limit resets", isOn: $notifyReset) }
                 }
                 .disabled(model.activeIsFree)
                 RowDivider()
                 SettingsRow("Anthropic reports an outage") {
-                    BrandSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)
+                    SettingsSwitch(label: "Anthropic reports an outage", isOn: $notifyOutage)
                         .onChangeCompat(of: notifyOutage) { on in
                             if on { Task { await Notifier.requestAuthorization(); await StatusMonitor.check() } }
                         }
@@ -791,7 +987,7 @@ struct UpdatesTab: View {
             }
             RowDivider()
             SettingsRow("Check automatically", detail: "Looks for new versions in the background.") {
-                BrandSwitch(label: "Check automatically", isOn: Binding(get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }))
+                SettingsSwitch(label: "Check automatically", isOn: Binding(get: { updater.automaticChecks }, set: { updater.automaticChecks = $0 }))
             }
         }
     }

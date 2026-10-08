@@ -34,27 +34,48 @@ enum MacGallery {
         week.skills = [.init(name: "loop", percent: 4), .init(name: "dev-report", percent: 2)]
         week.agents = [.init(name: "Explore", percent: 4)]
         ClaudeCodeLogs.lastResult = ContributorsScan.Result(day: week, week: week, limitHits: ["five_hour": 56, "seven_day": 1])
-        for tab in [SettingsTab.general, .notifications, .claudeCode, .accounts, .about] {
+        for tab in SettingsTab.allCases {
             for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
                 snapshot(SettingsView(model: model, tab: tab), size: NSSize(width: 760, height: 600), appearance: appearance,
                          to: "\(dir)/settings-\(tab.rawValue.replacingOccurrences(of: " ", with: ""))-\(name).png")
             }
         }
+        // The whole Usage pane, below the fold too.
+        for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            snapshot(SettingsView(model: model, tab: .usage), size: NSSize(width: 760, height: 980), appearance: appearance,
+                     to: "\(dir)/settings-Usage-full-\(name).png")
+        }
     }
 
-    /// Draws a view hierarchy into a PNG through an offscreen window (AppKit controls included).
+    /// Draws a view hierarchy into a PNG through an offscreen window (AppKit controls included). The window is key in an
+    /// active app, so native controls draw in their active colors (accent-tinted switches), not the inactive gray.
     private static func snapshot<V: View>(_ view: V, size: NSSize, appearance: NSAppearance.Name, to path: String) {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: size)
-        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = KeyWindow(contentRect: NSRect(origin: NSPoint(x: -20_000, y: -20_000), size: size),
+                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: appearance)
         window.contentView = host
+        NSApp.activate(ignoringOtherApps: true)
+        window.orderFrontRegardless()
+        window.makeKey()
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.6))
         host.layoutSubtreeIfNeeded()
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
-        host.cacheDisplay(in: host.bounds, to: rep)
-        if let png = rep.representation(using: .png, properties: [:]) { try? png.write(to: URL(fileURLWithPath: path)) }
+        // The window server's copy shows controls as they are on screen; drawing the view (cacheDisplay) gives AppKit
+        // controls their inactive look. Falls back to that when the capture isn't allowed.
+        if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.bestResolution, .boundsIgnoreFraming]),
+           let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
+            try? png.write(to: URL(fileURLWithPath: path))
+        } else if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+            host.cacheDisplay(in: host.bounds, to: rep)
+            if let png = rep.representation(using: .png, properties: [:]) { try? png.write(to: URL(fileURLWithPath: path)) }
+        }
+        window.orderOut(nil)
+    }
+
+    private final class KeyWindow: NSWindow {
+        override var canBecomeKey: Bool { true }
     }
 
     private static func write<V: View>(_ view: V, to path: String) {

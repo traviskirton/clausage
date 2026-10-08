@@ -33,36 +33,38 @@ struct MenuBarLabel: View {
 
 // MARK: Popover
 
-/// 220pt popover: brand header with the plan chip, the limit rows, the product line, and the footer whose timestamp
-/// is the refresh button (the tally stands in for the spinner). Warm translucent Paper (Night in dark mode).
+/// Popover colors: the warm translucent Paper gradient over the menu material, and the plan chip (Ink in light mode,
+/// inverted to Cream in dark).
+enum PopoverColor {
+    static let top = SettingsColor.dynamic(0xFFFCF6, 0.95, dark: 0x2A2624, 0.92)
+    static let bottom = SettingsColor.dynamic(0xF6EFE3, 0.95, dark: 0x1F1D1B, 0.92)
+    static let chip = SettingsColor.dynamic(0x26231F, dark: 0xF4EEE4)
+    static let chipText = SettingsColor.dynamic(0xFFFCF6, dark: 0x26231F)
+}
+
+/// 220pt popover: the title row with the plan chip, the limit rows, and the footer whose timestamp is the refresh
+/// button (the tally stands in for the spinner). The product split lives in Settings → Usage.
 struct UsageView: View {
     @ObservedObject var model: UsageModel
     @State private var hold: RefreshHold?       // success / failure text shown after a refresh, before returning to idle
     @State private var hoveringRefresh = false
     @State private var slash = 0.0
     @ObservedObject private var updater = Updater.shared
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var surface: Color {
-        scheme == .dark ? Color(red: 36 / 255, green: 33 / 255, blue: 31 / 255).opacity(0.84)
-                        : Color(red: 1, green: 252 / 255, blue: 246 / 255).opacity(0.86)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header.padding(.bottom, 12)
             if model.connected, model.activeIsFree {
                 freeBody
-                footer.padding(.top, 10)
+                footer.padding(.top, 12)
             } else if model.connected {
                 let limits = Forecast.ordered(model.limits)
                 if limits.isEmpty, model.updated != nil, model.error == nil {
                     Text("Nothing to count: your org didn’t set any plan limits.")
                         .font(.system(size: 11)).foregroundStyle(Color("Ink2")).fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(spacing: 10) { ForEach(limits) { UsageBar(limit: $0) } }
-                productLine
+                VStack(spacing: 12) { ForEach(limits) { UsageBar(limit: $0) } }
                 if model.activeSignedOut, let a = model.active {
                     Button("Sign in again") { model.reconnect(a) }.padding(.top, 6)
                 } else if let e = model.error {
@@ -76,7 +78,7 @@ struct UsageView: View {
                             .padding(.top, 6).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
-                footer.padding(.top, 10)
+                footer.padding(.top, 12)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Not connected. Sign in to your Claude account to see your plan usage.")
@@ -89,9 +91,10 @@ struct UsageView: View {
                 }
             }
         }
-        .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
+        .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 9)
         .frame(width: 220)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(surface))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(LinearGradient(colors: [PopoverColor.top, PopoverColor.bottom], startPoint: .top, endPoint: .bottom)))
         .background(shortcuts)
         .background(PopoverWindowStyle())
         .onChangeCompat(of: model.outcome?.id) { _ in
@@ -145,43 +148,38 @@ struct UsageView: View {
         .padding(.top, 8).padding(.horizontal, 4).padding(.bottom, 4)
     }
 
-    // MARK: Header and product line
+    // MARK: Title row
 
+    /// The rays-and-halo mark, "Clausage" in Bricolage, and the plan chip.
     private var header: some View {
         HStack(spacing: 5) {
-            BrandMark(size: 15)
-            Text("clausage").font(.clausageDisplay(13)).brandTracking(-0.035, size: 13).foregroundStyle(Color("Ink"))
+            BrandMark(size: 18)
+            Text("Clausage").font(.clausageDisplay(15)).brandTracking(-0.035, size: 15).foregroundStyle(Color("Ink"))
             Spacer(minLength: 6)
             if let plan = model.activeState?.plan {
-                BrandChip(text: plan.badge, size: 9.5)
+                Text(plan.badge)
+                    .font(.clausageDisplay(10.5))
+                    .foregroundStyle(PopoverColor.chipText)
+                    .padding(.top, 3).padding(.bottom, 4).padding(.horizontal, 7)
+                    .background(PopoverColor.chip, in: Capsule())
+                    .lineLimit(1).fixedSize()
                     .accessibilityLabel("Plan: \(plan.badge)")
             }
         }
         .accessibilityElement(children: .combine)
     }
 
-    /// "57% of this week came from Claude Code", from claude.ai's weekly split. Hidden when the field is missing.
-    @ViewBuilder private var productLine: some View {
-        if let top = model.activeState?.breakdown?.rows.first {
-            (Text("\(Int(top.percent.rounded()))%").font(.clausagePercent(11.5)).foregroundColor(Color("Ink"))
-             + Text(" of this week came from \(top.name)").foregroundColor(Color("Ink2")))
-                .font(.system(size: 11))
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 12)
-        }
-    }
-
     // MARK: Footer
 
     private var footer: some View {
         VStack(spacing: 7) {
-            Rectangle().fill(Color("Ink").opacity(0.12)).frame(height: 0.5)
+            Rectangle().fill(Color("Hairline")).frame(height: 0.5)
             HStack(spacing: 4) {
                 refreshLabel
                 Spacer(minLength: 6)
                 gear
             }
-            .font(.system(size: 11))
+            .font(.system(size: 10.5))
             .lineLimit(1)
         }
     }

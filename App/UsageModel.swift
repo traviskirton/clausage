@@ -56,6 +56,8 @@ final class UsageModel: ObservableObject {
             accounts = [a]; activeID = a.id
             var st = AccountState(limits: s.limits, error: nil, updated: s.updated, signedOut: false)
             st.plan = s.plan; st.breakdown = s.breakdown; st.weekly = s.weekly
+            st.credits = UsageFixtures.screen.credits
+            demoHistory = UsageFixtures.history(for: s, values: [10, 24, 38, 50, 62, 76])
             if CommandLine.arguments.contains("--demo-free") {
                 // The Free plan state: no usage page, nothing to count.
                 accounts[0].name = "travis@postfl.com"
@@ -323,7 +325,15 @@ final class UsageModel: ObservableObject {
                     st.breakdown = report.breakdown
                     st.weekly = report.weekly
                     st.plan = plan; st.planFetched = planFetched
-                    st.credits = previous?.credits
+                    // Usage credits: two extra read-only requests, at most hourly; /usage's `spend.enabled` keeps on/off
+                    // current in between.
+                    var credits = previous?.credits
+                    if credits != nil, let on = report.spendEnabled { credits?.enabled = on }
+                    if credits.map({ Date().timeIntervalSince($0.fetched) > 3600 }) ?? true,
+                       let fresh = await UsageClient.credits(s, orgID: account.orgID!) {
+                        credits = fresh
+                    }
+                    st.credits = credits
                     results.append((account.id, st))
                 } catch {
                     var st = states[account.id] ?? AccountState()
@@ -364,7 +374,17 @@ final class UsageModel: ObservableObject {
     static func historyKey(_ id: UUID) -> String { "\(HistoryStore.key).\(id.uuidString)" }
 
     /// The active account's running total.
-    var history: WeeklyHistory { active.map { HistoryStore.load(key: Self.historyKey($0.id)) } ?? WeeklyHistory() }
+    var history: WeeklyHistory {
+        #if DEBUG
+        if let demoHistory { return demoHistory }
+        #endif
+        return active.map { HistoryStore.load(key: Self.historyKey($0.id)) } ?? WeeklyHistory()
+    }
+
+    #if DEBUG
+    /// Fixture mode: a running total for the Settings Usage chart.
+    private var demoHistory: WeeklyHistory?
+    #endif
 
     private func publishSnapshot() {
         HistoryStore.save(history)
