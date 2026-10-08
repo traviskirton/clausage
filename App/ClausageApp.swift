@@ -33,13 +33,11 @@ struct MenuBarLabel: View {
 
 // MARK: Popover
 
-/// Popover colors: the warm translucent Paper gradient over the menu material, and the plan chip (Ink in light mode,
-/// inverted to Cream in dark).
+/// Popover colors: the warm translucent Paper gradient over the menu material. The plan chip's quiet tint is
+/// `PopoverChip` / `PopoverChipText` in the asset catalog.
 enum PopoverColor {
     static let top = SettingsColor.dynamic(0xFFFCF6, 0.95, dark: 0x2A2624, 0.92)
     static let bottom = SettingsColor.dynamic(0xF6EFE3, 0.95, dark: 0x1F1D1B, 0.92)
-    static let chip = SettingsColor.dynamic(0x26231F, dark: 0xF4EEE4)
-    static let chipText = SettingsColor.dynamic(0xFFFCF6, dark: 0x26231F)
 }
 
 /// 220pt popover: the title row with the plan chip, the limit rows, and the footer whose timestamp is the refresh
@@ -159,9 +157,9 @@ struct UsageView: View {
             if let plan = model.activeState?.plan {
                 Text(plan.badge)
                     .font(.clausageDisplay(10.5))
-                    .foregroundStyle(PopoverColor.chipText)
+                    .foregroundStyle(Color("PopoverChipText"))
                     .padding(.top, 3).padding(.bottom, 4).padding(.horizontal, 7)
-                    .background(PopoverColor.chip, in: Capsule())
+                    .background(Color("PopoverChip"), in: Capsule())
                     .lineLimit(1).fixedSize()
                     .accessibilityLabel("Plan: \(plan.badge)")
             }
