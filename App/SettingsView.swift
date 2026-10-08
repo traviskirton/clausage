@@ -1089,37 +1089,50 @@ struct UpdatesTab: View {
             }
             .padding(.vertical, 9)
             .frame(minHeight: 40)
-        case .checking:
-            SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))", detail: "Checking for updates…") {
-                ProgressView().controlSize(.small)
-            }
         default:
             SettingsRow("Clausage \(AppVersion.short) (\(AppVersion.build))",
                         detail: { if case .failed(let m) = updater.status { return m } else { return nil } }()) {
-                Button("Check for Updates…") { updater.check() }.disabled(!updater.canCheck)
+                Button { updater.check() } label: {
+                    BusyLabel(title: "Check for Updates…", busyTitle: "Checking…", busy: updater.status == .checking)
+                }
+                .disabled(!updater.canCheck && updater.status != .checking)
             }
         }
     }
 }
 
-/// The primary action: installs the ready update, quits and relaunches. While that runs, a native spinner and
-/// "Installing…". Ember with Ink text (white on Ember is about 3.3:1; Ink is about 5.6:1).
+/// The primary action: quits, installs the ready update and relaunches. Ember with Ink text (white on Ember is about
+/// 3.3:1; Ink is about 5.6:1).
 struct InstallNowButton: View {
     @ObservedObject private var updater = Updater.shared
 
     var body: some View {
-        if updater.status == .installing {
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text("Installing…").font(.system(size: 12)).foregroundStyle(SettingsColor.secondary)
-            }
-        } else {
-            Button { updater.installNow() } label: {
-                Text("Install Now").foregroundStyle(Color(nsColor: NSColor(srgbRed: 0x26 / 255, green: 0x23 / 255, blue: 0x1F / 255, alpha: 1)))
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(SettingsColor.ember)
+        Button { updater.installNow() } label: {
+            Text("Install Now").foregroundStyle(Color(nsColor: NSColor(srgbRed: 0x26 / 255, green: 0x23 / 255, blue: 0x1F / 255, alpha: 1)))
         }
+        .buttonStyle(.borderedProminent)
+        .tint(SettingsColor.ember)
+    }
+}
+
+/// A button label that, while busy, shows a native spinner and `busyTitle` in place of its title. It keeps at least
+/// the title's width, so the button doesn't shrink.
+struct BusyLabel: View {
+    let title: String
+    let busyTitle: String
+    let busy: Bool
+
+    var body: some View {
+        ZStack {
+            Text(title).opacity(busy ? 0 : 1)
+            if busy {
+                HStack(spacing: 5) {
+                    ProgressView().controlSize(.small).scaleEffect(0.8)
+                    Text(busyTitle)
+                }
+            }
+        }
+        .accessibilityLabel(busy ? busyTitle : title)
     }
 }
 
@@ -1202,7 +1215,7 @@ struct AboutTab: View {
     private var updateTitle: String {
         switch updater.status {
         case .idle: "Not checked yet"
-        case .checking: "Checking for updates…"
+        case .checking: updater.lastChecked == nil ? "Not checked yet" : "Up to date"     // the button says Refreshing…
         case .upToDate: "Up to date"
         case .available(let v): "Version \(v) is available"
         case .installing: "Installing \(updater.availableVersion ?? "the update")…"
@@ -1221,9 +1234,12 @@ struct AboutTab: View {
 
     @ViewBuilder private var updateControl: some View {
         switch updater.status {
-        case .checking: TallyLoader(size: 18, ink: SettingsColor.text)
         case .available, .installing: InstallNowButton()
-        default: Button("Check Now") { updater.check() }.disabled(!updater.canCheck)
+        default:
+            Button { updater.check() } label: {
+                BusyLabel(title: "Check Now", busyTitle: "Refreshing…", busy: updater.status == .checking)
+            }
+            .disabled(!updater.canCheck && updater.status != .checking)
         }
     }
 

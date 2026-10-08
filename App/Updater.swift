@@ -116,6 +116,9 @@ final class Updater: ObservableObject {
     }
 
     #if DEBUG
+    /// Gallery only: a check in progress.
+    func previewChecking() { status = .checking }
+
     /// Gallery only: the Updates pane's "update available" state.
     func previewAvailable(_ version: String, build: String) {
         availableVersion = version

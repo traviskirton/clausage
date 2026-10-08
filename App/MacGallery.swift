@@ -47,6 +47,12 @@ enum MacGallery {
                          to: "\(dir)/settings-\(tab.rawValue.replacingOccurrences(of: " ", with: ""))-\(name).png")
             }
         }
+        // Updates and About while a check runs.
+        Updater.shared.previewChecking()
+        for tab in [SettingsTab.updates, .about] {
+            snapshot(SettingsView(model: model, tab: tab), size: NSSize(width: 760, height: 600), appearance: .darkAqua,
+                     to: "\(dir)/settings-\(tab.rawValue)-checking-dark.png")
+        }
         // Updates with an update ready (3g).
         Updater.shared.previewAvailable("0.0.9", build: "9")
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
