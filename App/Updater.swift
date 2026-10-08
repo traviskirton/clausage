@@ -92,7 +92,7 @@ final class Updater: ObservableObject {
         let version = item.displayVersionString
         availableVersion = version
         availableBuild = item.versionString
-        // The release notes page, at this version's section (clausage.ai/release-notes/#v0.0.9).
+        // The releases page, at this version's section (clausage.ai/releases/#v0.0.9).
         releaseNotes = item.fullReleaseNotesURL.flatMap { URL(string: "\($0.absoluteString)#v\(version)") } ?? item.releaseNotesURL
         lastChecked = controller.updater.lastUpdateCheckDate ?? Date()
         if installRequested, let install { install(); return }

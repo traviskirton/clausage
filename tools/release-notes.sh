@@ -5,6 +5,7 @@
 #   tools/release-notes.sh 0.0.6 --from A --to B draft from a specific range (backfilling older versions)
 #   tools/release-notes.sh 0.0.9 --approve       mark the draft approved (release.sh refuses unapproved notes)
 #
+# The first line is the headline (it goes to Sparkle); the bullets go on clausage.ai/releases/.
 # A draft starts with a `<!-- draft -->` line. In a terminal the script shows the draft and asks to approve, edit
 # or cancel; otherwise it prints the draft and leaves it unapproved. Commit the approved file before releasing.
 set -euo pipefail

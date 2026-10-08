@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Builds site/release-notes/index.html from the approved notes in release-notes/<version>.md, newest first.
+"""From the approved notes in release-notes/<version>.md (a headline sentence, then bullets):
 
-Each version is a section with the anchor `v<version>` (the app links to clausage.ai/release-notes/#v0.0.9).
-A version's date is its release tag's date, or today while it's being released. Drafts (`<!-- draft -->`) are left out.
+- site/releases/index.html: every version's headline and details, newest first. Each version is a section with the
+  anchor `v<version>` (the app links to clausage.ai/releases/#v0.0.9). A version's date is its release tag's date, or
+  today while it's being released.
+- With `--sparkle <dir>`: for each `Clausage-<version>-<build>.zip` in <dir>, a `.html` beside it holding only the
+  headline, which generate_appcast embeds as that update's description.
 
-    tools/release-notes-page.py                     write the page
-    tools/release-notes-page.py --drafts <file>     preview with drafts included, written to <file> instead
+Drafts (`<!-- draft -->`) are left out.
+
+    tools/releases-page.py                      write the page
+    tools/releases-page.py --sparkle release    also write the headline files next to the release zips
+    tools/releases-page.py --drafts <file>      preview with drafts included, written to <file> instead
 """
 import datetime
 import html
@@ -16,7 +22,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 NOTES = ROOT / "release-notes"
-OUT = ROOT / "site" / "release-notes" / "index.html"
+OUT = ROOT / "site" / "releases" / "index.html"
 MARK = "<!-- draft -->"
 
 
@@ -40,6 +46,11 @@ def inline(text):
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
     t = re.sub(r"`(.+?)`", r"<code>\1</code>", t)
     return t
+
+
+def headline(md):
+    """The first non-bullet line: the one sentence that goes to Sparkle."""
+    return next((l.strip() for l in md.splitlines() if l.strip() and not l.startswith("- ")), "")
 
 
 def body(md):
@@ -84,10 +95,10 @@ def main():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Release notes · Clausage</title>
+<title>Releases · Clausage</title>
 <meta name="description" content="What changed in each version of Clausage for Mac.">
 <meta name="theme-color" content="#FFFCF6">
-<link rel="canonical" href="https://clausage.ai/release-notes/">
+<link rel="canonical" href="https://clausage.ai/releases/">
 <meta property="og:site_name" content="Clausage">
 <meta property="og:type" content="website">
 <link rel="icon" href="/assets/mark.svg" type="image/svg+xml">
@@ -107,7 +118,7 @@ def main():
 
 <main>
 <section class="wrap page-head">
-<span class="chip">Release notes</span>
+<span class="chip">Releases</span>
 <h1 class="page-title">Fresh off the counter.</h1>
 <p class="page-lede">What changed in each version of Clausage for Mac, newest first.</p>
 </section>
@@ -138,6 +149,14 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page)
     print(f"Wrote {out} ({len(versions)} versions)")
+
+    if "--sparkle" in sys.argv:
+        zips = pathlib.Path(sys.argv[sys.argv.index("--sparkle") + 1]).resolve()
+        notes = dict(versions)
+        for z in zips.glob("Clausage-*-*.zip"):
+            v = z.stem.split("-")[1]
+            if v in notes:
+                z.with_suffix(".html").write_text(f"<p>{inline(headline(notes[v]))}</p>\n")
 
 
 if __name__ == "__main__":
