@@ -163,7 +163,25 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage.tests
         GENERATE_INFOPLIST_FILE: YES
+  ClausageUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: ClausageiOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.postfl.clausage-ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ClausageiOS
+        CODE_SIGN_STYLE: Automatic
 schemes:
+  ClausageUITests:
+    build:
+      targets:
+        ClausageUITests: [test]
+    test:
+      targets: [ClausageUITests]
   ClausageTests:
     build:
       targets:

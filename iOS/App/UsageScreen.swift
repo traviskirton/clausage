@@ -7,16 +7,16 @@ struct UsageScreen: View {
     @StateObject private var model = PhoneModel()
     @State private var showSignIn = false
     @State private var showSettings = false
-    @State private var pull: CGFloat = 0
+    /// Pull to refresh. Observable on its own, so the per-frame pull doesn't redraw this screen.
+    @State private var ptr = PullState()
+    /// iOS 17 only: where the content's top rests, for the inline title.
     @State private var restY: CGFloat?
-    /// Before iOS 26: the title row has scrolled under the bar, so the bar shows "Clausage" inline.
+    /// The title row has scrolled under the bar, so the bar shows "Clausage" inline.
     @State private var titleScrolledAway = false
-    /// For the iOS 26 large title, which is laid out without a width while Settings pops back (the chip jumped left).
-    @State private var screenWidth: CGFloat = 0
-    @State private var slash: Double = 0
     @State private var justUpdated = false
     @State private var debugScreen: String?
     @Environment(\.scenePhase) private var phase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -31,10 +31,8 @@ struct UsageScreen: View {
                                   onSample: { model.startSample() })
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
             .modifier(UsageNavigation(signedIn: model.signedIn, titled: !SharedStore.isFree(model.snapshot),
-                                      plan: model.snapshot?.plan, inlineTitle: titleScrolledAway, width: screenWidth,
-                                      onSettings: { showSettings = true }))
+                                      inlineTitle: titleScrolledAway, onSettings: { showSettings = true }))
             .navigationDestination(isPresented: $showSettings) { SettingsScreen(model: model) }
             .navigationDestination(isPresented: Binding(get: { debugScreen != nil }, set: { if !$0 { debugScreen = nil } })) {
                 SettingsScreen(model: model)
@@ -71,9 +69,9 @@ struct UsageScreen: View {
                 }
                 .frame(height: 0)
 
-                if !UsageNavigation.systemTitleRow {
-                    TitleRow(plan: snap?.plan).padding(.top, 14).padding(.bottom, 22)
-                }
+                // In the content, not the bar's large title: pull to refresh opens its gap between the bar and this row,
+                // and holds it there while updating, which a system large title can't do.
+                TitleRow(plan: snap?.plan).padding(.top, PullState.restGap).padding(.bottom, 22)
                 if let sample = SampleData.scenario(snap?.sample) {
                     SampleBanner(scenario: sample) { model.stopSample() }.padding(.bottom, 24)
                 }
@@ -100,15 +98,17 @@ struct UsageScreen: View {
         }
         .coordinateSpace(name: "usage")
         .scrollIndicators(.hidden)
-        .refreshable { await pullRefresh() }
-        .modifier(ScrollOffset { y in
+        .modifier(PullToRefresh(state: ptr, onScrolled: scrolled, start: startPullRefresh, apply: applyFresh,
+                                legacyRefresh: { await model.refresh() }, legacyTop: { y in
             if restY == nil { restY = y }
-            let offset = (restY ?? y) - y        // > 0 scrolled down, < 0 pulled
-            pull = max(0, -offset)
-            let away = offset > 60
-            if away != titleScrolledAway { withAnimation(.easeInOut(duration: 0.15)) { titleScrolledAway = away } }
-        })
-        .overlay(alignment: .top) { pullIndicator }
+            scrolled((restY ?? y) - y)
+        }))
+    }
+
+    /// How far the content has scrolled down (the inline title shows once the title row is under the bar).
+    private func scrolled(_ distance: CGFloat) {
+        let away = distance > 60
+        if away != titleScrolledAway { withAnimation(.easeInOut(duration: 0.15)) { titleScrolledAway = away } }
     }
 
     // MARK: Free plan
@@ -234,51 +234,92 @@ struct UsageScreen: View {
 
     // MARK: Pull to refresh
 
-    /// Under the navigation bar: the tally counts up a stroke at a time as you pull; while refreshing it keeps counting;
-    /// on success the Ember slash lands.
-    private var pullIndicator: some View {
-        let strokes = min(4, Int(pull / 22))
-        let release = pull > 92
-        return VStack(spacing: 4) {
-            if model.refreshing {
-                TallyLoader(size: 30)
-            } else {
-                Tally(size: 30, filled: slash > 0 ? 4 : strokes, slash: slash)
-            }
-            Text(model.refreshing ? "Counting…" : (slash > 0 ? "Updated" : (release ? "Release to refresh" : "Pull to refresh")))
-                .font(.system(size: 13)).foregroundStyle(Color("Ink2"))
-        }
-        .padding(.top, 8)
-        .opacity(model.refreshing || slash > 0 ? 1 : min(1, Double(pull) / 50))
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+    private var spring: Animation { reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85) }
+
+    /// On release past the threshold: hold the content 72pt down and fetch.
+    private func startPullRefresh() {
+        guard !ptr.busy else { return }
+        ptr.set(.updating)
+        withAnimation(spring) { ptr.hold = PullState.holdHeight }
+        Task { await runPullRefresh() }
     }
 
-    private func pullRefresh() async {
-        let ok = await model.refresh()
-        guard ok else { return }
-        withAnimation(.easeOut(duration: 0.35)) { slash = 1 }
-        UIAccessibility.post(notification: .announcement, argument: "Updated")
-        justUpdated = true
-        try? await Task.sleep(for: .milliseconds(650))
-        Task {
-            try? await Task.sleep(for: .milliseconds(400))
-            slash = 0
+    /// At least 0.8s of Updating, at most 10s. Success: the slash lands and the new numbers swap in, together; hold 0.9s.
+    /// Failure: old numbers stay; hold 1.4s. Then spring back and reset.
+    private func runPullRefresh() async {
+        let started = Date()
+        while model.refreshing { try? await Task.sleep(for: .milliseconds(100)) }      // e.g. the app-open refresh
+        let model = model
+        let ok = await withTaskGroup(of: Bool?.self) { group -> Bool in
+            group.addTask { await model.refresh(apply: false) }
+            group.addTask { try? await Task.sleep(for: .seconds(10)); return nil }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first ?? false
+        }
+        let left = 0.8 - Date().timeIntervalSince(started)
+        if left > 0 { try? await Task.sleep(for: .seconds(left)) }
+
+        if ok {
+            ptr.set(.updated)
+            if reduceMotion { ptr.slash = 1 } else { withAnimation(.timingCurve(0.3, 0, 0.2, 1, duration: 0.24)) { ptr.slash = 1 } }
+            applyFresh()
+            justUpdated = true
+            UIAccessibility.post(notification: .announcement, argument: "Updated")
+            try? await Task.sleep(for: .milliseconds(900))
+        } else {
+            ptr.set(.failed)
+            UIAccessibility.post(notification: .announcement, argument: "Couldn’t update")
+            try? await Task.sleep(for: .milliseconds(1400))
+        }
+        withAnimation(spring) { ptr.hold = 0 }
+        try? await Task.sleep(for: .milliseconds(450))
+        ptr.reset()
+        if ok {
             try? await Task.sleep(for: .seconds(2))
             justUpdated = false
         }
     }
+
+    /// Show the numbers the pull fetched (bars animate their width). Not while a finger is on the screen; then on release.
+    private func applyFresh() {
+        if ptr.interacting { ptr.pendingApply = true; return }
+        ptr.pendingApply = false
+        withAnimation(.easeInOut(duration: 0.5)) { model.sync() }
+    }
 }
 
-/// The content's top edge as it scrolls (0 at rest, positive when pulled down). iOS 18 reads the scroll geometry; iOS 17
-/// falls back to a preference from the content, which doesn't always update while scrolling.
-private struct ScrollOffset: ViewModifier {
-    let onChange: (CGFloat) -> Void
+/// iOS 18+: the custom pull to refresh (overscroll from the scroll geometry, release from the scroll phase, the 72pt
+/// hold as a top content margin, the indicator as an overlay under the bar). iOS 17: the system refresh control.
+private struct PullToRefresh: ViewModifier {
+    let state: PullState
+    let onScrolled: (CGFloat) -> Void
+    let start: () -> Void
+    let apply: () -> Void
+    let legacyRefresh: () async -> Void
+    let legacyTop: (CGFloat) -> Void
+
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
-            content.onScrollGeometryChange(for: CGFloat.self, of: { -($0.contentOffset.y + $0.contentInsets.top) }) { _, y in onChange(y) }
+            content
+                .contentMargins(.top, state.hold, for: .scrollContent)
+                // Offset plus insets (the hold included), so applying the hold doesn't read as a pull.
+                .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { _, y in
+                    state.track(-y)
+                    onScrolled(y)
+                }
+                .onScrollPhaseChange { old, new in
+                    state.interacting = new == .interacting
+                    guard old == .interacting, new != .interacting else { return }
+                    if state.phase == .armed { start() }
+                    if state.pendingApply { apply() }
+                }
+                .overlay(alignment: .top) { PullIndicator(state: state) }
+                .accessibilityAction(named: "Refresh") { if !state.busy { start() } }
         } else {
-            content.onPreferenceChange(PullKey.self, perform: onChange)
+            content
+                .refreshable { await legacyRefresh() }
+                .onPreferenceChange(PullKey.self, perform: legacyTop)
         }
     }
 }
@@ -296,39 +337,18 @@ struct ScreenBackground: View {
     }
 }
 
-/// The system navigation bar. Signed in: "Clausage" as the large title and the gear (SF Symbol `gearshape`) trailing.
-/// On iOS 26 the large title is the title row (tally, "Clausage", plan chip), which iOS collapses to an inline "Clausage"
-/// on scroll. Before 26 the title row is ordinary content and the bar stays empty apart from the gear.
-/// The Free screen has the gear but no title; the welcome screen has no bar.
+/// The system navigation bar: the gear (SF Symbol `gearshape`) trailing, and "Clausage" inline once the title row has
+/// scrolled under it. The bar never moves, so pull to refresh opens its gap below it. The Free screen has the gear but
+/// no title; the welcome screen has no bar.
 private struct UsageNavigation: ViewModifier {
     let signedIn: Bool
     let titled: Bool
-    let plan: Plan?
-    /// Before iOS 26 only (iOS 26 collapses the large title itself).
     let inlineTitle: Bool
-    /// The screen's width; the large title row is pinned to it, less the 20pt side margins.
-    let width: CGFloat
     let onSettings: () -> Void
-
-    static var systemTitleRow: Bool {
-        if #available(iOS 26.0, *) { return true } else { return false }
-    }
 
     func body(content: Content) -> some View {
         if !signedIn {
             content.toolbar(.hidden, for: .navigationBar)
-        } else if #available(iOS 26.0, *), titled {
-            content
-                .navigationTitle("Clausage")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    ToolbarItem(placement: .largeTitle) {
-                        TitleRow(plan: plan)
-                            .frame(width: width > 40 ? width - 40 : nil)
-                            .padding(.top, 14).padding(.bottom, 22)
-                    }
-                    gear
-                }
         } else {
             content
                 .navigationTitle(titled && inlineTitle ? "Clausage" : "")

@@ -22,8 +22,9 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 3. Commit after each working change (stage explicit paths; `.vscode/` stays untracked).
 4. Ask before replacing the user's installed copy with a dev build if they may be relying on it.
 5. iOS: `xcodebuild -project Clausage.xcodeproj -scheme ClausageiOS -sdk iphonesimulator -derivedDataPath build-ios -destination 'id=<sim>' build`, then `xcrun simctl install`. Debug-only launch args: `--render-gallery <dir>` (PNGs of every widget family, dark/light/tinted), `--self-test <file>` (checks the Keychain group and App Group entitlements), `--demo` (fixture data, no network), `--demo-bottom`, `--demo-open settings` (with `--demo-scroll icons|support`), `--demo-welcome`, `--demo-signin` (opens the sign-in sheet; debug builds show any page the sign-in policy blocks), `--sample <id>`.
-6. Mac debug build: `build-dbg/.../Clausage --render-gallery <dir>` (dir inside `~/Library/Containers/com.postfl.clausage/Data/`, the app is sandboxed) renders the popover, menu bar icon states and Settings panes; `--demo` runs on fixtures.
-7. In this shell `cp` is interactive; use `command cp -f`.
+6. iOS gestures: `ClausageUITests` (`UITests/`) drags a slow pull and holds it, so in-between states can be screenshotted from outside: run `TEST_RUNNER_PTR_DRAG=450 TEST_RUNNER_PTR_HOLD=2.5 xcodebuild -scheme ClausageUITests … test-without-building` in the background and `xcrun simctl io <sim> screenshot` meanwhile. Not a pass/fail test. iOS 26+ needs an iOS 26+ simulator runtime (the "iPhone 17 Pro 27" sim).
+7. Mac debug build: `build-dbg/.../Clausage --render-gallery <dir>` (dir inside `~/Library/Containers/com.postfl.clausage/Data/`, the app is sandboxed) renders the popover, menu bar icon states and Settings panes; `--demo` runs on fixtures.
+8. In this shell `cp` is interactive; use `command cp -f`.
 
 ## Branching and releases
 

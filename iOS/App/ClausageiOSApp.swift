@@ -70,9 +70,10 @@ final class PhoneModel: ObservableObject {
     /// The email to show, or the org name when claude.ai didn't return one.
     var who: String? { snapshot?.email ?? account }
 
-    /// Returns true when fresh numbers arrived.
+    /// Returns true when fresh numbers arrived. With `apply: false` the new numbers are saved but not shown until `sync()`
+    /// (pull to refresh swaps them in with the slash).
     @discardableResult
-    func refresh() async -> Bool {
+    func refresh(apply: Bool = true) async -> Bool {
         guard !refreshing else { return false }
         if demo {
             refreshing = true
@@ -86,7 +87,7 @@ final class PhoneModel: ObservableObject {
             SampleMode.refresh()
             refreshing = false
             message = nil
-            sync()
+            if apply { sync() }
             WidgetCenter.shared.reloadAllTimelines()
             return true
         }
@@ -99,7 +100,7 @@ final class PhoneModel: ObservableObject {
         case .signedOut: message = "Signed out. Sign in again to keep your usage up to date."; ok = false
         case .failed(let text): message = text; ok = false
         }
-        sync()
+        if apply { sync() }
         await PhoneNotifier.process()
         WidgetCenter.shared.reloadAllTimelines()
         return ok
@@ -126,26 +127,6 @@ final class PhoneModel: ObservableObject {
         UsageSource.markSignedOut()
         PhoneNotifier.cancelAll()
         message = nil
-        sync()
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-
-    /// Privacy → Clear Cached Usage: widgets show "No data" until the next refresh.
-    func clearCachedUsage() {
-        var s = SharedStore.load() ?? .init(limits: [], updated: Date(), connected: signedIn)
-        s.limits = []; s.breakdown = nil; s.weekly = nil; s.credits = nil; s.plan = nil; s.planUpdated = nil
-        s.cleared = true
-        SharedStore.save(s)
-        HistoryStore.clear()
-        sync()
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-
-    /// Privacy → Sign Out and Delete Everything.
-    func deleteEverything() async {
-        await signOut()
-        SharedStore.defaults.removeObject(forKey: "snapshot")
-        for key in SharedStore.defaults.dictionaryRepresentation().keys { SharedStore.defaults.removeObject(forKey: key) }
         sync()
         WidgetCenter.shared.reloadAllTimelines()
     }
