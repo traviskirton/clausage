@@ -653,9 +653,9 @@ struct GeneralTab: View {
     @AppStorage("fillAccent") private var fillAccent = false
     @AppStorage("refreshMinutes") private var refresh = 5
 
-    /// The menu bar shows the highest limit.
+    /// The menu bar shows All models.
     private var sessionLabel: String {
-        MenuBarIcon.highest(model.limits).map { "\(Int($0.percent.rounded()))%" } ?? "24%"
+        MenuBarIcon.shown(model.limits).map { "\(Int($0.percent.rounded()))%" } ?? "24%"
     }
 
     var body: some View {
@@ -687,7 +687,7 @@ struct GeneralTab: View {
                 if display == "percent" {
                     VStack(spacing: 0) {
                         RowDivider()
-                        SettingsRow("Tint percent by pressure", detail: "Orange at 85%, red at 95% · uses highest limit") {
+                        SettingsRow("Tint percent by pressure", detail: "Orange at 85%, red at 95% · uses All models") {
                             SettingsSwitch(label: "Tint percent by pressure", isOn: $tint)
                         }
                     }

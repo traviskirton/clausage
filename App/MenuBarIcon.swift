@@ -5,7 +5,7 @@ enum MenuDisplay: String, CaseIterable {
 }
 
 /// Draws the menubar item from the 12 logo rays, monochrome unless Fill is in accent color.
-/// In Fill and Percent modes the rays fill in clockwise from the top as the highest limit is used: rays 1, 2 … 12, so
+/// In Fill and Percent modes the rays fill in clockwise from the top as All models is used: rays 1, 2 … 12, so
 /// `round(pct / 100 × 12)` rays are filled; filled rays at 100% of the template color, empty rays at 32%.
 /// Only the percent text can take a pressure color ("Tint percent by pressure"). Fill can opt into drawing its filled
 /// rays in the system accent color over solid white ones ("Fill in accent color"; the app's Ember when the system
@@ -14,13 +14,13 @@ enum MenuBarIcon {
     /// Fill order: clockwise from the top (rays 1 … 12). Indices into `LogoRays.rays`.
     static let fillOrder = Array(0...11)
 
-    static func pressureColor(_ limits: [UsageLimit]) -> NSColor? {
-        let m = limits.map(\.percent).max() ?? 0
+    static func pressureColor(_ limit: UsageLimit?) -> NSColor? {
+        let m = limit?.percent ?? 0
         return m >= 95 ? .systemRed : (m >= 85 ? .systemOrange : nil)      // same thresholds as the popover bars
     }
 
-    /// The limit the icon reflects: the highest one.
-    static func highest(_ limits: [UsageLimit]) -> UsageLimit? { limits.max { $0.percent < $1.percent } }
+    /// The limit the icon reflects: always All models, so the number never silently switches to another limit.
+    static func shown(_ limits: [UsageLimit]) -> UsageLimit? { limits.first { $0.kind == "weekly_all" } }
 
     /// Number of filled rays (0...12) for a percent.
     static func raysFilled(_ pct: Double) -> Int { Int((min(max(pct, 0), 100) / 100 * 12).rounded()) }
@@ -33,12 +33,12 @@ enum MenuBarIcon {
                       pinnedBase: Bool = false, accentFill: Bool = false, free: Bool = false) -> NSImage {
         let display = free ? .off : display
         let limits = free ? [] : limits
-        let top = highest(limits)
+        let top = shown(limits)
         let session = limits.first { $0.kind == "session" }
-        let weekly = limits.first { $0.kind == "weekly_all" }
+        let weekly = top
         let fills = display == .fill || display == .percent
         let lit = free ? 0 : (fills ? raysFilled(top?.percent ?? 0) : 12)
-        let pressure = (display == .percent && tint) ? pressureColor(limits) : nil
+        let pressure = (display == .percent && tint) ? pressureColor(top) : nil
         let accent = display == .fill && accentFill
         let template = pressure == nil && !(display == .fill && (pinnedBase || accent))
         let base: NSColor = template ? .black : (accent ? .white : (darkMenubar ? .white : NSColor(white: 0.12, alpha: 1)))
