@@ -19,8 +19,11 @@ enum MenuBarIcon {
         return m >= 95 ? .systemRed : (m >= 85 ? .systemOrange : nil)      // same thresholds as the popover bars
     }
 
-    /// The limit the icon reflects: always All models, so the number never silently switches to another limit.
-    static func shown(_ limits: [UsageLimit]) -> UsageLimit? { limits.first { $0.kind == "weekly_all" } }
+    /// The limit the icon reflects: All models, or Session when the account has no All models limit. Never whichever
+    /// limit happens to be highest, so the number doesn't silently switch between limits.
+    static func shown(_ limits: [UsageLimit]) -> UsageLimit? {
+        limits.first { $0.kind == "weekly_all" } ?? limits.first { $0.kind == "session" }
+    }
 
     /// Number of filled rays (0...12) for a percent.
     static func raysFilled(_ pct: Double) -> Int { Int((min(max(pct, 0), 100) / 100 * 12).rounded()) }
@@ -35,7 +38,7 @@ enum MenuBarIcon {
         let limits = free ? [] : limits
         let top = shown(limits)
         let session = limits.first { $0.kind == "session" }
-        let weekly = top
+        let weekly = limits.first { $0.kind == "weekly_all" }
         let fills = display == .fill || display == .percent
         let lit = free ? 0 : (fills ? raysFilled(top?.percent ?? 0) : 12)
         let pressure = (display == .percent && tint) ? pressureColor(top) : nil
