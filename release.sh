@@ -81,13 +81,17 @@ if (( UPLOAD && INSTALL_PREVIOUS )); then
   echo "Installed and opened $(basename "$PREV" .zip) for the update test."
 fi
 
-# 1. Version bump (Sparkle compares the build number, so it must always increase).
+# 1. Version bump (Sparkle compares the build number, so it must always increase). The branch's first commit already
+# sets the build to the last release's + 1; this only raises it if that was skipped.
 if [[ -n "$VERSION" ]]; then
-  python3 - "$VERSION" <<'PY'
+  LAST_TAG=$(git tag -l 'release-*' --sort=-v:refname | head -1)
+  LAST_BUILD=$(git show "$LAST_TAG:project.yml" 2>/dev/null | sed -n 's/^ *CURRENT_PROJECT_VERSION: "\([0-9]*\)"/\1/p' | head -1)
+  python3 - "$VERSION" "${LAST_BUILD:-0}" <<'PY'
 import re, sys
 p = "project.yml"; s = open(p).read()
+last = int(sys.argv[2])
 s = re.sub(r'(MARKETING_VERSION: )"[^"]*"', r'\1"%s"' % sys.argv[1], s)
-s = re.sub(r'(CURRENT_PROJECT_VERSION: )"(\d+)"', lambda m: '%s"%d"' % (m.group(1), int(m.group(2)) + 1), s)
+s = re.sub(r'(CURRENT_PROJECT_VERSION: )"(\d+)"', lambda m: '%s"%d"' % (m.group(1), max(int(m.group(2)), last + 1)), s)
 open(p, "w").write(s)
 PY
 fi
