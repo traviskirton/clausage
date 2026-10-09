@@ -14,5 +14,7 @@ enum UsageTimeline {
         return Array(dates.filter { $0 >= now }.sorted().prefix(24))
     }
 
-    static func refreshDate(_ now: Date) -> Date { now.addingTimeInterval(15 * 60) }
+    /// When to ask for the next timeline (iOS fetches fresh numbers then). iOS treats it as a request and spaces reloads
+    /// out by its own budget, so this is the soonest, not a promise.
+    static func refreshDate(_ now: Date) -> Date { now.addingTimeInterval(5 * 60) }
 }

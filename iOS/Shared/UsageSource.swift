@@ -1,6 +1,7 @@
 import Foundation
 
-/// Where the iOS side gets usage numbers. Only the app and `RefreshUsageIntent` fetch; widgets only read the App Group snapshot.
+/// Where the iOS side gets usage numbers. The app, `RefreshUsageIntent` and every widget timeline (`refreshForWidget`)
+/// fetch; everything reads the App Group snapshot.
 enum UsageSource {
     enum Outcome {
         case ok
@@ -67,6 +68,24 @@ enum UsageSource {
             return .signedOut
         } catch {
             return .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    /// Widgets, before every timeline: fetch fresh numbers, so a widget is current whenever iOS redraws it, without the
+    /// app being opened. When several widgets reload together, the first one fetches and the rest use its numbers (one
+    /// fetch per minute). Waits at most `limit`; past that, the timeline uses what's saved.
+    @MainActor
+    static func refreshForWidget(limit: Duration = .seconds(8)) async {
+        let d = SharedStore.defaults
+        let now = Date()
+        if let last = d.object(forKey: "widgetFetchAttempt") as? Date, now.timeIntervalSince(last) < 60 { return }
+        d.set(now, forKey: "widgetFetchAttempt")
+        let fetch = Task { _ = await refresh() }
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await fetch.value }
+            group.addTask { try? await Task.sleep(for: limit) }
+            await group.next()
+            group.cancelAll()
         }
     }
 

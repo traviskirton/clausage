@@ -31,11 +31,14 @@ struct UsageProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageEntry>) -> Void) {
-        let now = Date()
-        let snap = UsageSource.snapshot()
-        let history = HistoryStore.load()
-        let entries = UsageTimeline.dates(snap, now: now).map { UsageEntry(date: $0, snapshot: snap, history: history) }
-        completion(Timeline(entries: entries, policy: .after(UsageTimeline.refreshDate(now))))
+        Task {
+            await UsageSource.refreshForWidget()
+            let now = Date()
+            let snap = UsageSource.snapshot()
+            let history = HistoryStore.load()
+            let entries = UsageTimeline.dates(snap, now: now).map { UsageEntry(date: $0, snapshot: snap, history: history) }
+            completion(Timeline(entries: entries, policy: .after(UsageTimeline.refreshDate(now))))
+        }
     }
 }
 
@@ -116,6 +119,7 @@ struct GaugeProvider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: UsageGaugeIntent, in context: Context) async -> Timeline<GaugeEntry> {
+        await UsageSource.refreshForWidget()
         let now = Date()
         let snap = UsageSource.snapshot()
         let entries = UsageTimeline.dates(snap, now: now).map { GaugeEntry(date: $0, snapshot: snap, limitID: configuration.limit?.id) }
