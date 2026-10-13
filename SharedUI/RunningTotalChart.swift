@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// "All models · this week" as a running total toward the limit (design 5b, states 6a–6e).
-/// x = the 7 days of the window, y = 0–100%. The line is in the All models state color; Ember never appears.
+/// x = the window from start to reset, each reading at its hour; y = 0–100%. The line is in the All models state color;
+/// Ember never appears.
 struct RunningTotalChart: View {
     let chart: WeeklyChart
     let level: Forecast.Level
@@ -44,12 +45,16 @@ struct RunningTotalChart: View {
         var right: CGFloat { compact ? 8 : 12 }
         var plotBottom: CGFloat { size.height - letterBand - (compact ? 4 : 6) }
         var plotHeight: CGFloat { max(10, plotBottom - top) }
-        var step: CGFloat { (size.width - left - right) / 6 }
-        func x(_ day: Double) -> CGFloat { left + CGFloat(day) * step }
+        /// `f`: 0 at the window start, 1 at the reset.
+        func x(_ f: Double) -> CGFloat { left + CGFloat(f) * (size.width - left - right) }
         func y(_ v: Double) -> CGFloat { plotBottom - CGFloat(min(max(v, 0), 100) / 100) * plotHeight }
-        func p(_ day: Double, _ v: Double) -> CGPoint { CGPoint(x: x(day), y: y(v)) }
-        /// The window starts a little before day 1's point.
-        var originX: Double { -0.2 }
+        func p(_ f: Double, _ v: Double) -> CGPoint { CGPoint(x: x(f), y: y(v)) }
+    }
+
+    /// Adds the stretch from `a` to `b`. A drop (an early reset) is a cliff at `b`'s time: level, then straight down.
+    private static func stretch(_ path: inout Path, _ a: WeeklyChart.Sample, _ b: WeeklyChart.Sample, _ g: Geometry) {
+        if b.value < a.value { path.addLine(to: g.p(b.x, a.value)) }
+        path.addLine(to: g.p(b.x, b.value))
     }
 
     // MARK: Drawing
@@ -68,28 +73,29 @@ struct RunningTotalChart: View {
             ctx.stroke(limit, with: .color(Color("Ink")), style: StrokeStyle(lineWidth: 1, dash: [2, 4]))
         }
 
-        // Even pace: 1/7 at day 1 to 100% at day 7.
+        // Even pace: 0% at the window start to 100% at the reset.
         var pace = Path()
-        pace.move(to: g.p(0, WeeklyChart.pace(day: 0)))
-        pace.addLine(to: g.p(6, 100))
+        pace.move(to: g.p(0, 0))
+        pace.addLine(to: g.p(1, 100))
         ctx.stroke(pace, with: .color(paceColor), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [5, 5]))
 
         // Last week, faint, while this week is still short (6e).
-        if let ghost = chart.ghost {
+        if let ghost = chart.ghost, let g0 = ghost.first {
             var p = Path()
-            for (d, v) in ghost.enumerated() { d == 0 ? p.move(to: g.p(0, v)) : p.addLine(to: g.p(Double(d), v)) }
+            p.move(to: g.p(g0.x, g0.value))
+            for i in ghost.indices.dropFirst() { Self.stretch(&p, ghost[i - 1], ghost[i], g) }
             let ghostColor = style == .full ? Color("Ghost") : Color.white.opacity(0.3)
             ctx.stroke(p, with: .color(ghostColor), style: StrokeStyle(lineWidth: compact ? 2.5 : 3, lineCap: .round, lineJoin: .round))
         }
 
-        let pts = chart.points
-        guard let first = pts.first else { return }
+        let line = chart.line
+        guard let first = line.first else { return }
 
-        // Before install (6a/6b): dotted Ink 3 from (window start, 0) to the first point.
+        // Before install (6a/6b): dotted Ink 3 from (window start, 0) to the first reading.
         if chart.beforeInstall {
             var p = Path()
-            p.move(to: g.p(g.originX, 0))
-            p.addLine(to: g.p(Double(first.day), first.value))
+            p.move(to: g.p(0, 0))
+            p.addLine(to: g.p(first.x, first.value))
             ctx.stroke(p, with: .color(ink3), style: StrokeStyle(lineWidth: compact ? 1.5 : 2, lineCap: .round, dash: [0.1, compact ? 3.5 : 4.5]))
         }
 
@@ -100,26 +106,35 @@ struct RunningTotalChart: View {
         // Missed days from the window start (installed earlier, app didn't run): dashed from (start, 0).
         if chart.gapFromStart {
             var p = Path()
-            p.move(to: g.p(g.originX, 0))
-            p.addLine(to: g.p(Double(first.day), first.value))
+            p.move(to: g.p(0, 0))
+            p.addLine(to: g.p(first.x, first.value))
             ctx.stroke(p, with: shading, style: dashed)
         }
 
-        // Day-to-day segments: solid between measured days, dashed across a missed day (6c).
-        if pts.count > 1 {
-            for i in 1..<pts.count {
-                let a = pts[i - 1], b = pts[i]
-                var p = Path()
-                p.move(to: g.p(Double(a.day), a.value))
-                p.addLine(to: g.p(Double(b.day), b.value))
-                ctx.stroke(p, with: shading, style: (a.kind == .missing || b.kind == .missing) ? dashed : solid)
+        // Reading to reading: one solid path, broken by dashed stretches across missed days (6c).
+        var run = Path()
+        run.move(to: g.p(first.x, first.value))
+        for i in line.indices.dropFirst() {
+            let a = line[i - 1], b = line[i]
+            if b.dashed {
+                ctx.stroke(run, with: shading, style: solid)
+                var gap = Path()
+                gap.move(to: g.p(a.x, a.value))
+                Self.stretch(&gap, a, b, g)
+                ctx.stroke(gap, with: shading, style: dashed)
+                run = Path()
+                run.move(to: g.p(b.x, b.value))
+            } else {
+                Self.stretch(&run, a, b, g)
             }
         }
+        ctx.stroke(run, with: shading, style: solid)
 
-        // Markers: hollow Paper dots for past days, a dashed ring for a missed day, a filled dot for today.
+        // Markers: hollow Paper dots at each past day's last reading, a dashed ring for a missed day, a filled dot for now.
+        let pts = chart.points
         let r: CGFloat = compact ? 2.5 : 3
         for pt in pts where pt.day != chart.today || pt.kind == .missing {
-            let c = g.p(Double(pt.day), pt.value)
+            let c = g.p(pt.x, pt.value)
             if pt.kind == .missing {
                 let rr = r + 1.5
                 let circle = Path(ellipseIn: CGRect(x: c.x - rr, y: c.y - rr, width: rr * 2, height: rr * 2))
@@ -132,7 +147,7 @@ struct RunningTotalChart: View {
             }
         }
         if let today = pts.last(where: { $0.day == chart.today && $0.kind == .measured }) {
-            let c = g.p(Double(today.day), today.value)
+            let c = g.p(today.x, today.value)
             let tr: CGFloat = compact ? 4.5 : 5
             ctx.fill(Path(ellipseIn: CGRect(x: c.x - tr, y: c.y - tr, width: tr * 2, height: tr * 2)), with: shading)
         }
@@ -147,8 +162,8 @@ struct RunningTotalChart: View {
             .fixedSize()
             .position(x: g.left + (compact ? 12 : 14), y: g.y(100) - (compact ? 7 : 8))
 
-        if chart.beforeInstall, let first = chart.points.first {
-            let mid = g.p((g.originX + Double(first.day)) / 2, first.value / 2)
+        if chart.beforeInstall, let first = chart.line.first {
+            let mid = g.p(first.x / 2, first.value / 2)
             Text("Before Clausage").font(.system(size: small)).foregroundStyle(UsageColor.ink3(style))
                 .fixedSize()
                 .position(x: max(mid.x, g.left + 40), y: mid.y + (compact ? 9 : 12))
@@ -156,7 +171,7 @@ struct RunningTotalChart: View {
 
         // Today's running total, with a Paper halo; above the point, or below once it's over 85%.
         if let today = chart.points.last(where: { $0.day == chart.today }) {
-            let c = g.p(Double(today.day), today.value)
+            let c = g.p(today.x, today.value)
             let size: CGFloat = compact ? 11 : 14
             if let plate = labelBackground {
                 // About 8pt off the dot. Above-left unless the label's top would come within 16pt of the Limit line.
@@ -173,7 +188,7 @@ struct RunningTotalChart: View {
                     .position(c)
             } else {
                 let below = today.value > 85
-                let nearRight = today.day >= 5
+                let nearRight = today.x > 0.72
                 HaloText(text: "\(Int(chart.current.rounded()))%", size: size, halo: paper)
                     .fixedSize()
                     .position(x: nearRight ? c.x - size * 1.7 : c.x + size * 1.6,
@@ -190,7 +205,7 @@ struct RunningTotalChart: View {
                                  : d < chart.today ? UsageColor.ink3(style)
                                  : (style == .full ? AnyShapeStyle(Color("PaceLine")) : AnyShapeStyle(.quaternary)))
                 .fixedSize()
-                .position(x: g.x(Double(d)), y: g.size.height - g.letterBand / 2)
+                .position(x: g.x(chart.dayCenters[d]), y: g.size.height - g.letterBand / 2)
         }
     }
 

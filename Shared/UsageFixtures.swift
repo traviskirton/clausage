@@ -69,10 +69,28 @@ enum UsageFixtures {
         func add(_ v: Double, _ t: Date) {
             h.record(WeeklyWindow(start: w.start, resetsAt: w.resetsAt, percent: v), at: t, calendar: cal)
         }
+        // Hourly readings, 9 AM to 10 PM, rising unevenly through the day (busy mornings and afternoons, quiet lunch and
+        // evenings) to each day's total.
+        let weights: [Double] = [1, 3, 4, 3, 1, 0.5, 2, 4, 4, 3, 1, 0.5, 1, 1]
+        func cumulative(_ hour: Int) -> Double { weights.prefix(max(0, min(hour - 8, weights.count))).reduce(0, +) }
+        let total = cumulative(22)
+        var previous = 0.0
         for d in 0..<today {
             let day = cal.startOfDay(for: cal.date(byAdding: .day, value: d, to: w.start)!)
             let v = values.flatMap { d < $0.count ? $0[d] : nil } ?? (w.percent * Double(d + 1) / Double(today + 1)).rounded()
-            add(v, cal.date(byAdding: .hour, value: 20, to: day)!)
+            for hour in 9...22 {
+                let t = cal.date(byAdding: .hour, value: hour, to: day)!
+                if t > w.start { add((previous + (v - previous) * cumulative(hour) / total).rounded(), t) }
+            }
+            previous = v
+        }
+        let todayStart = cal.startOfDay(for: snapshot.updated)
+        let nowHour = cal.component(.hour, from: snapshot.updated)
+        if nowHour > 9 {
+            for hour in 9..<nowHour {
+                let t = cal.date(byAdding: .hour, value: hour, to: todayStart)!
+                if t > w.start { add((previous + (w.percent - previous) * cumulative(hour) / cumulative(nowHour)).rounded(), t) }
+            }
         }
         add(w.percent, snapshot.updated.addingTimeInterval(-60))
         add(w.percent, snapshot.updated)

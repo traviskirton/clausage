@@ -33,7 +33,9 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertTrue(c.beforeInstall)
         XCTAssertFalse(c.gapFromStart)
         XCTAssertEqual(c.today, 3)
-        XCTAssertEqual(c.points, [.init(day: 3, value: 41, kind: .measured)])
+        XCTAssertEqual(c.points.map(\.day), [3])
+        XCTAssertEqual(c.points.map(\.value), [41])
+        XCTAssertEqual(c.points.map(\.kind), [.measured])
         XCTAssertEqual(c.rightLabel, "Counting since today")
         XCTAssertTrue(c.caption.hasPrefix("Fresh tally! You’d already used 41% before Clausage showed up"), c.caption)
     }
@@ -84,8 +86,9 @@ final class WeeklyHistoryTests: XCTestCase {
         record(&h, fullWeek())
         h.record(window(3, week: 1), at: at(0, 8, week: 1), calendar: cal)
         let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(3, week: 1), now: at(0, 9, week: 1), calendar: cal))
-        XCTAssertEqual(c.ghost, [10, 24, 38, 50, 58, 70, 92])
-        XCTAssertEqual(c.points, [.init(day: 0, value: 3, kind: .measured)])
+        XCTAssertEqual(c.ghost?.map(\.value), [10, 24, 38, 50, 58, 70, 92])
+        XCTAssertEqual(c.points.map(\.day), [0])
+        XCTAssertEqual(c.points.map(\.value), [3])
         XCTAssertFalse(c.beforeInstall)
         XCTAssertEqual(c.rightLabel, "Week of Oct 6")
         XCTAssertEqual(c.caption, "Clean slate. Last week’s line stays in the background for comparison until Thursday.")
@@ -141,13 +144,53 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertEqual(hit.caption, "Seconds are served Tue 5:00 AM.")
     }
 
-    func testRecordMergesUnchangedReadingsOnTheSameDay() {
+    func testRecordKeepsTheLastReadingOfEachHour() {
         var h = WeeklyHistory()
-        record(&h, [(1, 9, 20), (1, 10, 20), (1, 11, 20), (1, 12, 21), (2, 0, 21)])
+        h.record(window(20), at: at(1, 9), calendar: cal)
+        h.record(window(21), at: at(1, 9, 30), calendar: cal)
+        h.record(window(22), at: at(1, 9, 55), calendar: cal)
+        h.record(window(22), at: at(1, 10, 5), calendar: cal)
+        h.record(window(22), at: at(1, 11), calendar: cal)
         XCTAssertEqual(h.weeks.count, 1)
         XCTAssertEqual(h.weeks[0].samples, 5)
-        XCTAssertEqual(h.weeks[0].readings.map(\.pct), [20, 21, 21])     // midnight starts a new day
-        XCTAssertEqual(h.weeks[0].readings[0].t, at(1, 11))
+        XCTAssertEqual(h.weeks[0].readings.map(\.pct), [22, 22, 22])     // one per hour, even when unchanged
+        XCTAssertEqual(h.weeks[0].readings.map(\.t), [at(1, 9, 55), at(1, 10, 5), at(1, 11)])
+    }
+
+    // Every reading is on the line at its own time, so the chart shows when in the day the usage happened.
+    func testLineHasEveryHourlyReadingAtItsTime() throws {
+        var h = WeeklyHistory()
+        record(&h, [(0, 9, 2), (0, 10, 5), (0, 14, 9), (1, 9, 10), (1, 11, 16)])
+        let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(16), now: at(1, 12), calendar: cal))
+        XCTAssertEqual(c.line.map(\.value), [2, 5, 9, 10, 16])
+        XCTAssertTrue(c.line.allSatisfy { !$0.dashed })
+        // Tue 9 AM is 4 of the window's 168 hours in.
+        XCTAssertEqual(c.line[0].x, 4.0 / 168, accuracy: 1e-9)
+        XCTAssertEqual(c.points.map(\.value), [9, 16])                 // day markers: each day's last reading
+        XCTAssertEqual(c.points[0].x, 9.0 / 168, accuracy: 1e-9)
+    }
+
+    // An early (free) reset: the total drops mid-window. The line keeps the drop where it was seen, a cliff, not a
+    // day-long slope.
+    func testEarlyResetIsACliffAtItsHour() throws {
+        var h = WeeklyHistory()
+        record(&h, [(2, 20, 60), (2, 23, 62), (3, 9, 62), (3, 10, 1), (3, 12, 4)])
+        let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(4), now: at(3, 13), calendar: cal))
+        XCTAssertEqual(c.line.map(\.value), [60, 62, 62, 1, 4])
+        XCTAssertEqual(c.line[3].x - c.line[2].x, 1.0 / 168, accuracy: 1e-9)   // within the hour
+        XCTAssertEqual(c.current, 4)
+    }
+
+    // A missed day: the stretch across it is dashed, and its ring sits on that stretch.
+    func testMissedDayStretchIsDashed() throws {
+        var h = WeeklyHistory()
+        record(&h, [(0, 20, 10), (1, 20, 24), (3, 20, 50)])
+        let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(50), now: at(3, 21), calendar: cal))
+        XCTAssertEqual(c.line.map(\.dashed), [false, false, true])
+        let ring = try XCTUnwrap(c.points.first { $0.kind == .missing })
+        XCTAssertEqual(ring.day, 2)
+        XCTAssertEqual(ring.value, 37, accuracy: 0.001)
+        XCTAssertEqual(ring.x, (c.line[1].x + c.line[2].x) / 2, accuracy: 1e-9)
     }
 
     func testKeepsTwoWeeks() {

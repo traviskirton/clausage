@@ -1,8 +1,8 @@
 import Foundation
 
 /// The weekly (All models) % as this app saw it, per fixed weekly window. claude.ai has no daily series, so each app
-/// records its own: on every fetch, `(timestamp, seven_day %)`. Within a window the % only rises, so the last reading of
-/// each day is that day's running total.
+/// records its own: on every fetch, `(timestamp, seven_day %)`, keeping the last reading of each hour. Within a window
+/// the % rises, except when claude.ai resets it early; the chart draws that drop as a cliff.
 struct WeeklyHistory: Codable, Equatable {
     struct Reading: Codable, Equatable {
         let t: Date
@@ -22,7 +22,7 @@ struct WeeklyHistory: Codable, Equatable {
     /// The org these readings belong to; recording for a different one starts over.
     var owner: String? = nil
 
-    /// Records one fetch. Readings with an unchanged % on the same local day are merged (the later time wins).
+    /// Records one fetch. Readings in the same local hour are merged (the later one wins), about 168 a week.
     mutating func record(_ window: WeeklyWindow, at now: Date, owner: String? = nil, calendar: Calendar = .current) {
         if owner != self.owner {
             weeks = []
@@ -38,7 +38,7 @@ struct WeeklyHistory: Codable, Equatable {
         }
         weeks[i].samples += 1
         let reading = Reading(t: now, pct: window.percent)
-        if let last = weeks[i].readings.last, last.pct == reading.pct, calendar.isDate(last.t, inSameDayAs: now), last.t <= now {
+        if let last = weeks[i].readings.last, calendar.isDate(last.t, equalTo: now, toGranularity: .hour), last.t <= now {
             weeks[i].readings[weeks[i].readings.count - 1] = reading
         } else {
             weeks[i].readings.append(reading)
@@ -79,31 +79,46 @@ enum HistoryStore {
 
 // MARK: Chart model (states 6a–6f)
 
-/// What the running-total chart draws. x = the 7 days of the window, y = 0–100%.
+/// What the running-total chart draws. x = how far through the window (0 at the start, 1 at the reset), so each
+/// reading sits at its real hour; y = 0–100%.
 struct WeeklyChart: Equatable {
     enum Kind: Equatable {
         /// A reading was taken that day.
         case measured
-        /// No reading that day: drawn as a hollow dashed circle, interpolated, with a dashed segment across the gap.
+        /// No reading that day: drawn as a hollow dashed circle where the dashed stretch crosses the day.
         case missing
     }
 
+    /// A day marker: the day's last reading, or where the line crosses a day with no readings.
     struct Point: Equatable {
         let day: Int
         let value: Double
         let kind: Kind
+        /// 0...1 across the window.
+        var x: Double = 0
+    }
+
+    /// One reading on the line. `dashed`: the stretch leading to it crosses a day with no readings.
+    struct Sample: Equatable {
+        let x: Double
+        let value: Double
+        var dashed = false
     }
 
     /// 0...6, the day of the window that today falls on.
     let today: Int
-    /// Today and earlier, in day order. Days before the first reading aren't here.
+    /// Day markers, today and earlier, in day order. Days before the first reading aren't here.
     let points: [Point]
+    /// Every reading (the last of each hour), oldest first. With no reading yet today, it runs on to now, dashed.
+    let line: [Sample]
     /// Draw a dotted "Before Clausage" stretch from (window start, 0) to the first point (6a, 6b).
     let beforeInstall: Bool
     /// The stretch from (window start, 0) to the first point is a missed-day gap (the app was installed earlier).
     let gapFromStart: Bool
-    /// Last week's day values, drawn as a faint ghost line (6e, until the third day of the window).
-    let ghost: [Double]?
+    /// Last week's readings, drawn as a faint ghost line (6e, until the third day of the window).
+    let ghost: [Sample]?
+    /// Where each day's letter goes: the middle of that day's part of the window.
+    let dayCenters: [Double]
     /// Today's running total.
     let current: Double
     let windowStart: Date
@@ -117,9 +132,6 @@ struct WeeklyChart: Equatable {
 
     var firstDay: Int { points.first?.day ?? today }
     var missingDays: [Int] { points.filter { $0.kind == .missing }.map(\.day) }
-
-    /// Even pace to 100% by the reset: 1/7 at day 1, 100% at day 7.
-    static func pace(day: Int) -> Double { Double(day + 1) / 7 * 100 }
 
     /// Day of the window (0...6) a date falls on. The window starts mid-day (e.g. Tue 5:00 AM), so its last few hours
     /// on the reset day fold into day 6.
@@ -136,42 +148,69 @@ struct WeeklyChart: Equatable {
         let start = window.start, reset = window.resetsAt
         let today = dayIndex(now, windowStart: start, calendar: calendar)
         let previous = history.week(before: week)
-
-        // Last reading of each day, today included.
-        var last: [Int: Double] = [:]
-        for r in week.readings where r.t <= now {
-            last[dayIndex(r.t, windowStart: start, calendar: calendar)] = r.pct
+        func position(_ t: Date, _ start: Date, _ reset: Date) -> Double {
+            min(max(t.timeIntervalSince(start) / max(reset.timeIntervalSince(start), 1), 0), 1)
         }
-        guard let firstDay = last.keys.min() else { return nil }
-        let current = week.readings.last { $0.t <= now }?.pct ?? window.percent
+        func x(_ t: Date) -> Double { position(t, start, reset) }
+
+        // First and last reading of each day, today included.
+        let readings = week.readings.filter { $0.t <= now }
+        var firstOf: [Int: WeeklyHistory.Reading] = [:], lastOf: [Int: WeeklyHistory.Reading] = [:]
+        for r in readings {
+            let d = dayIndex(r.t, windowStart: start, calendar: calendar)
+            if firstOf[d] == nil { firstOf[d] = r }
+            lastOf[d] = r
+        }
+        guard let firstDay = lastOf.keys.min() else { return nil }
+        let current = readings.last?.pct ?? window.percent
 
         // Ghost: last week's line, shown for the first two days of a new window when there's one to compare.
-        var ghost: [Double]?
+        var ghost: [Sample]?
         if today <= 1, let prev = previous, !prev.readings.isEmpty {
-            var prevLast: [Int: Double] = [:]
-            for r in prev.readings { prevLast[dayIndex(r.t, windowStart: prev.start, calendar: calendar)] = r.pct }
-            ghost = fill(prevLast, through: 6)
+            ghost = prev.readings.map { Sample(x: position($0.t, prev.start, prev.resetsAt), value: $0.pct) }
         }
         if week.samples < 2 && ghost == nil { return nil }       // 6f
 
         // Installed before this window (or it has last week's data): days without readings are gaps, not "before install".
         let installedEarlier = previous != nil
         let beforeInstall = firstDay > 0 && !installedEarlier
+        let gapFromStart = firstDay > 0 && installedEarlier
 
+        // The line: every reading at its time, dashed across days without readings; on to now if today has none yet.
+        var line: [Sample] = []
+        var lineDay: Int?
+        for r in readings {
+            let d = dayIndex(r.t, windowStart: start, calendar: calendar)
+            line.append(Sample(x: x(r.t), value: r.pct, dashed: lineDay.map { d - $0 > 1 } ?? false))
+            lineDay = d
+        }
+        if let d = lineDay, d < today { line.append(Sample(x: x(now), value: current, dashed: true)) }
+
+        // A day without readings: as far along the stretch that crosses it as the day is between the stretch's ends
+        // (the window start at 0% before the first reading; now at the current total after the last).
+        func across(_ d: Int) -> (x: Double, value: Double) {
+            let a = lastOf.keys.filter { $0 < d }.max(), b = firstOf.keys.filter { $0 > d }.min()
+            let dayA = Double(a ?? -1), xA = a.map { x(lastOf[$0]!.t) } ?? 0, vA = a.map { lastOf[$0]!.pct } ?? 0
+            let dayB = Double(b ?? today), xB = b.map { x(firstOf[$0]!.t) } ?? x(now), vB = b.map { firstOf[$0]!.pct } ?? current
+            guard dayB > dayA else { return (xA, vA) }
+            let f = (Double(d) - dayA) / (dayB - dayA)
+            return (xA + (xB - xA) * f, vA + (vB - vA) * f)
+        }
         var points: [Point] = []
-        for d in firstDay...max(firstDay, today) {
-            if let v = last[d] {
-                points.append(Point(day: d, value: v, kind: .measured))
+        for d in (gapFromStart ? 0 : firstDay)...max(firstDay, today) {
+            if let r = lastOf[d] {
+                points.append(Point(day: d, value: r.pct, kind: .measured, x: x(r.t)))
             } else {
-                points.append(Point(day: d, value: interpolate(d, last, upTo: today, current: current), kind: .missing))
+                let c = across(d)
+                points.append(Point(day: d, value: c.value, kind: .missing, x: c.x))
             }
         }
-        let gapFromStart = firstDay > 0 && installedEarlier
-        if gapFromStart {
-            // Missed days at the start of the window: interpolate from (start, 0).
-            let firstValue = last[firstDay] ?? current
-            let lead = (0..<firstDay).map { d in Point(day: d, value: firstValue * Double(d + 1) / Double(firstDay + 1), kind: .missing) }
-            points = lead + points
+
+        let day0 = calendar.startOfDay(for: start)
+        let dayCenters = (0..<7).map { d -> Double in
+            let a = d == 0 ? start : calendar.date(byAdding: .day, value: d, to: day0) ?? start
+            let b = d == 6 ? reset : calendar.date(byAdding: .day, value: d + 1, to: day0) ?? reset
+            return (x(a) + x(b)) / 2
         }
 
         let fmt = Formatters(calendar: calendar)
@@ -204,8 +243,8 @@ struct WeeklyChart: Equatable {
             (headline, caption) = paceCaption(current: current, now: now, start: start, reset: reset, fmt: fmt)
         }
 
-        return WeeklyChart(today: today, points: points, beforeInstall: beforeInstall, gapFromStart: gapFromStart,
-                           ghost: ghost, current: current, windowStart: start, resetsAt: reset,
+        return WeeklyChart(today: today, points: points, line: line, beforeInstall: beforeInstall, gapFromStart: gapFromStart,
+                           ghost: ghost, dayCenters: dayCenters, current: current, windowStart: start, resetsAt: reset,
                            rightLabel: rightLabel, headline: headline, caption: caption)
     }
 
@@ -228,21 +267,6 @@ struct WeeklyChart: Equatable {
 
     private static func dayDate(_ d: Int, _ start: Date, _ calendar: Calendar) -> Date {
         calendar.date(byAdding: .day, value: d, to: start) ?? start
-    }
-
-    /// Day values 0...through, interpolating days without readings.
-    private static func fill(_ values: [Int: Double], through end: Int) -> [Double] {
-        (0...end).map { d in values[d] ?? interpolate(d, values, upTo: end, current: values.values.max() ?? 0) }
-    }
-
-    /// Linear between the nearest measured days around `d` (0 at the window start; `current` if nothing later).
-    private static func interpolate(_ d: Int, _ values: [Int: Double], upTo today: Int, current: Double) -> Double {
-        let before = values.keys.filter { $0 < d }.max()
-        let after = values.keys.filter { $0 > d && $0 <= today }.min()
-        let x0 = Double(before ?? -1), y0 = before.flatMap { values[$0] } ?? 0
-        let x1 = Double(after ?? today), y1 = after.flatMap { values[$0] } ?? current
-        guard x1 > x0 else { return y0 }
-        return y0 + (y1 - y0) * (Double(d) - x0) / (x1 - x0)
     }
 
     private static func firstGap(_ points: [Point]) -> (days: [Int], next: Int)? {
