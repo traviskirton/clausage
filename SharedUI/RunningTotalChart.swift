@@ -7,8 +7,8 @@ struct RunningTotalChart: View {
     let chart: WeeklyChart
     let level: Forecast.Level
     var now: Date = Date()
-    /// 5pt in the app, 4pt in the large widget.
-    var lineWidth: CGFloat = 5
+    /// 4pt, in the app and the large widget. Dashed stretches are 1pt thinner; last week's line is 2pt.
+    var lineWidth: CGFloat = 4
     /// Smaller markers and labels (large widget).
     var compact = false
     /// Mac Settings: today's % sits on a small plate of this color, above and left of the dot (below and right when
@@ -85,7 +85,7 @@ struct RunningTotalChart: View {
             p.move(to: g.p(g0.x, g0.value))
             for i in ghost.indices.dropFirst() { Self.stretch(&p, ghost[i - 1], ghost[i], g) }
             let ghostColor = style == .full ? Color("Ghost") : Color.white.opacity(0.3)
-            ctx.stroke(p, with: .color(ghostColor), style: StrokeStyle(lineWidth: compact ? 2.5 : 3, lineCap: .round, lineJoin: .round))
+            ctx.stroke(p, with: .color(ghostColor), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
         }
 
         let line = chart.line
@@ -99,7 +99,7 @@ struct RunningTotalChart: View {
             ctx.stroke(p, with: .color(ink3), style: StrokeStyle(lineWidth: compact ? 1.5 : 2, lineCap: .round, dash: [0.1, compact ? 3.5 : 4.5]))
         }
 
-        let dashed = StrokeStyle(lineWidth: lineWidth * 0.8, lineCap: .round, lineJoin: .round, dash: [0.1, lineWidth * 1.7])
+        let dashed = StrokeStyle(lineWidth: lineWidth - 1, lineCap: .round, lineJoin: .round, dash: [0.1, lineWidth * 1.7])
         let solid = StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
         let shading: GraphicsContext.Shading = .color(lineColor)
 
