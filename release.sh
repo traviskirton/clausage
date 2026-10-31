@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Build, notarize, zip, sign and publish a Clausage update to https://clausage.ai/updates/
+# Build, notarize, zip, sign and publish a Clausage update to https://clausage.ai/updates/, and archive the iPhone app
+# (same build) for Xcode's Organizer, to upload to App Store Connect from there.
 #
 #   ./release.sh 1.2.0               bump to 1.2.0 (build number +1), build, sign, upload
 #   ./release.sh                     rebuild/publish the current version as-is
@@ -121,6 +122,16 @@ VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
 BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
 ZIP="Clausage-$VER-$BUILD.zip"
 echo "Releasing $VER (build $BUILD), notarized"
+
+# 2b. The iPhone app, same build, archived into Xcode's Archives folder so it shows in Window → Organizer, ready to
+# upload to App Store Connect from there. Before anything is published, so a failure here stops the release.
+IOS_ARCHIVE="$HOME/Library/Developer/Xcode/Archives/$(date +%F)/ClausageiOS-$BUILD.xcarchive"
+rm -rf "$IOS_ARCHIVE"
+xcodebuild -project Clausage.xcodeproj -scheme ClausageiOS -configuration Release -destination 'generic/platform=iOS' \
+  -derivedDataPath build -archivePath "$IOS_ARCHIVE" -allowProvisioningUpdates -quiet archive \
+  || die "archiving the iPhone app failed"
+IOS_VER=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" "$IOS_ARCHIVE/Info.plist")
+echo "Archived Clausage for iPhone $IOS_VER ($BUILD): upload it from Xcode → Window → Organizer."
 
 # 3. Zip + appcast (release/ keeps earlier zips so the appcast lists history)
 mkdir -p release
