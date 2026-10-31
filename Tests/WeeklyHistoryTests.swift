@@ -157,15 +157,16 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertEqual(h.weeks[0].readings.map(\.t), [at(1, 9, 55), at(1, 10, 5), at(1, 11)])
     }
 
-    // Every reading is on the line at its own time, so the chart shows when in the day the usage happened.
-    func testLineHasEveryHourlyReadingAtItsTime() throws {
+    // The history is hourly; the line keeps the last reading of each 6-hour block, at its own time.
+    func testLineKeepsOneReadingPerSixHours() throws {
         var h = WeeklyHistory()
         record(&h, [(0, 9, 2), (0, 10, 5), (0, 14, 9), (1, 9, 10), (1, 11, 16)])
+        XCTAssertEqual(h.weeks[0].readings.count, 5)
         let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(16), now: at(1, 12), calendar: cal))
-        XCTAssertEqual(c.line.map(\.value), [2, 5, 9, 10, 16])
+        XCTAssertEqual(c.line.map(\.value), [5, 9, 16])
         XCTAssertTrue(c.line.allSatisfy { !$0.dashed })
-        // Tue 9 AM is 4 of the window's 168 hours in.
-        XCTAssertEqual(c.line[0].x, 4.0 / 168, accuracy: 1e-9)
+        // Tue 10 AM is 5 of the window's 168 hours in.
+        XCTAssertEqual(c.line[0].x, 5.0 / 168, accuracy: 1e-9)
         XCTAssertEqual(c.points.map(\.value), [9, 16])                 // day markers: each day's last reading
         XCTAssertEqual(c.points[0].x, 9.0 / 168, accuracy: 1e-9)
     }
@@ -174,10 +175,10 @@ final class WeeklyHistoryTests: XCTestCase {
     // day-long slope.
     func testEarlyResetIsACliffAtItsHour() throws {
         var h = WeeklyHistory()
-        record(&h, [(2, 20, 60), (2, 23, 62), (3, 9, 62), (3, 10, 1), (3, 12, 4)])
+        record(&h, [(2, 20, 60), (2, 23, 62), (3, 9, 62), (3, 10, 1), (3, 11, 3), (3, 12, 4)])
         let c = try XCTUnwrap(WeeklyChart.make(history: h, window: window(4), now: at(3, 13), calendar: cal))
-        XCTAssertEqual(c.line.map(\.value), [60, 62, 62, 1, 4])
-        XCTAssertEqual(c.line[3].x - c.line[2].x, 1.0 / 168, accuracy: 1e-9)   // within the hour
+        XCTAssertEqual(c.line.map(\.value), [62, 62, 1, 3, 4])                // both sides of the drop survive thinning
+        XCTAssertEqual(c.line[2].x - c.line[1].x, 1.0 / 168, accuracy: 1e-9)   // within the hour
         XCTAssertEqual(c.current, 4)
     }
 

@@ -80,8 +80,11 @@ enum HistoryStore {
 // MARK: Chart model (states 6a–6f)
 
 /// What the running-total chart draws. x = how far through the window (0 at the start, 1 at the reset), so each
-/// reading sits at its real hour; y = 0–100%.
+/// reading sits at its real hour; y = 0–100%. The history is hourly; the line shows one reading per `lineHours`.
 struct WeeklyChart: Equatable {
+    /// The line keeps the last reading of each 6-hour block of the local day (12–6 AM, 6 AM–12 PM, …).
+    static let lineHours = 6
+
     enum Kind: Equatable {
         /// A reading was taken that day.
         case measured
@@ -109,7 +112,7 @@ struct WeeklyChart: Equatable {
     let today: Int
     /// Day markers, today and earlier, in day order. Days before the first reading aren't here.
     let points: [Point]
-    /// Every reading (the last of each hour), oldest first. With no reading yet today, it runs on to now, dashed.
+    /// The readings, thinned to one per `lineHours`, oldest first. With no reading yet today, it runs on to now, dashed.
     let line: [Sample]
     /// Draw a dotted "Before Clausage" stretch from (window start, 0) to the first point (6a, 6b).
     let beforeInstall: Bool
@@ -154,7 +157,7 @@ struct WeeklyChart: Equatable {
         func x(_ t: Date) -> Double { position(t, start, reset) }
 
         // First and last reading of each day, today included.
-        let readings = week.readings.filter { $0.t <= now }
+        let readings = thinned(week.readings.filter { $0.t <= now }, calendar: calendar)
         var firstOf: [Int: WeeklyHistory.Reading] = [:], lastOf: [Int: WeeklyHistory.Reading] = [:]
         for r in readings {
             let d = dayIndex(r.t, windowStart: start, calendar: calendar)
@@ -167,7 +170,7 @@ struct WeeklyChart: Equatable {
         // Ghost: last week's line, shown for the first two days of a new window when there's one to compare.
         var ghost: [Sample]?
         if today <= 1, let prev = previous, !prev.readings.isEmpty {
-            ghost = prev.readings.map { Sample(x: position($0.t, prev.start, prev.resetsAt), value: $0.pct) }
+            ghost = thinned(prev.readings, calendar: calendar).map { Sample(x: position($0.t, prev.start, prev.resetsAt), value: $0.pct) }
         }
         if week.samples < 2 && ghost == nil { return nil }       // 6f
 
@@ -263,6 +266,17 @@ struct WeeklyChart: Equatable {
                     "You’re eating faster than the dashed line, and seconds aren’t served until \(resetText).")
         }
         return ("Leftovers likely.", "You’re at or under the dashed line, so you should make it to \(resetText).")
+    }
+
+    /// The last reading of each `lineHours` block, plus the readings either side of a drop, so an early reset stays a
+    /// cliff at its hour. A day's last reading always stays, so the day markers sit on the line.
+    static func thinned(_ readings: [WeeklyHistory.Reading], calendar: Calendar) -> [WeeklyHistory.Reading] {
+        func block(_ t: Date) -> (Date, Int) { (calendar.startOfDay(for: t), calendar.component(.hour, from: t) / lineHours) }
+        return readings.indices.filter { i in
+            guard i + 1 < readings.count else { return true }
+            let r = readings[i], next = readings[i + 1]
+            return block(next.t) != block(r.t) || next.pct < r.pct || (i > 0 && readings[i - 1].pct > r.pct)
+        }.map { readings[$0] }
     }
 
     private static func dayDate(_ d: Int, _ start: Date, _ calendar: Calendar) -> Date {

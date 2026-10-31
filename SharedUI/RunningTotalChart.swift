@@ -57,6 +57,49 @@ struct RunningTotalChart: View {
         path.addLine(to: g.p(b.x, b.value))
     }
 
+    /// The samples as one path: a smooth curve through each rising run, a cliff at each drop.
+    private static func curve(_ samples: ArraySlice<WeeklyChart.Sample>, _ g: Geometry) -> Path {
+        var path = Path()
+        guard var a = samples.first else { return path }
+        var run = [g.p(a.x, a.value)]
+        path.move(to: run[0])
+        for b in samples.dropFirst() {
+            if b.value < a.value {
+                smooth(&path, run)
+                stretch(&path, a, b, g)
+                run = [g.p(b.x, b.value)]
+            } else {
+                run.append(g.p(b.x, b.value))
+            }
+            a = b
+        }
+        smooth(&path, run)
+        return path
+    }
+
+    /// Adds a monotone cubic through `pts` (the path is at `pts[0]`), so the curve never dips or overshoots between
+    /// readings: flat where the total held, eased where it rose (Steffen tangents, as in d3's monotoneX).
+    private static func smooth(_ path: inout Path, _ pts: [CGPoint]) {
+        guard pts.count > 1 else { return }
+        let n = pts.count
+        let h = (0..<n - 1).map { pts[$0 + 1].x - pts[$0].x }
+        let s = (0..<n - 1).map { h[$0] > 0 ? (pts[$0 + 1].y - pts[$0].y) / h[$0] : 0 }
+        var m = [CGFloat](repeating: 0, count: n)
+        for i in 1..<n - 1 {
+            let p = h[i - 1] + h[i] > 0 ? (s[i - 1] * h[i] + s[i] * h[i - 1]) / (h[i - 1] + h[i]) : 0
+            let sign = (s[i - 1] > 0 ? 1 : s[i - 1] < 0 ? -1 : 0) + (s[i] > 0 ? 1 : s[i] < 0 ? -1 : 0) as CGFloat
+            m[i] = sign * min(abs(s[i - 1]), abs(s[i]), abs(p) / 2)
+        }
+        m[0] = n > 2 ? (3 * s[0] - m[1]) / 2 : s[0]
+        m[n - 1] = n > 2 ? (3 * s[n - 2] - m[n - 2]) / 2 : s[n - 2]
+        for i in 0..<n - 1 {
+            let d = h[i] / 3
+            path.addCurve(to: pts[i + 1],
+                          control1: CGPoint(x: pts[i].x + d, y: pts[i].y + m[i] * d),
+                          control2: CGPoint(x: pts[i + 1].x - d, y: pts[i + 1].y - m[i + 1] * d))
+        }
+    }
+
     // MARK: Drawing
 
     private func draw(_ ctx: inout GraphicsContext, _ g: Geometry) {
@@ -80,10 +123,8 @@ struct RunningTotalChart: View {
         ctx.stroke(pace, with: .color(paceColor), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [5, 5]))
 
         // Last week, faint, while this week is still short (6e).
-        if let ghost = chart.ghost, let g0 = ghost.first {
-            var p = Path()
-            p.move(to: g.p(g0.x, g0.value))
-            for i in ghost.indices.dropFirst() { Self.stretch(&p, ghost[i - 1], ghost[i], g) }
+        if let ghost = chart.ghost, !ghost.isEmpty {
+            let p = Self.curve(ghost[...], g)
             let ghostColor = style == .full ? Color("Ghost") : Color.white.opacity(0.3)
             ctx.stroke(p, with: .color(ghostColor), style: StrokeStyle(lineWidth: compact ? 2.5 : 3, lineCap: .round, lineJoin: .round))
         }
@@ -111,24 +152,17 @@ struct RunningTotalChart: View {
             ctx.stroke(p, with: shading, style: dashed)
         }
 
-        // Reading to reading: one solid path, broken by dashed stretches across missed days (6c).
-        var run = Path()
-        run.move(to: g.p(first.x, first.value))
-        for i in line.indices.dropFirst() {
-            let a = line[i - 1], b = line[i]
-            if b.dashed {
-                ctx.stroke(run, with: shading, style: solid)
-                var gap = Path()
-                gap.move(to: g.p(a.x, a.value))
-                Self.stretch(&gap, a, b, g)
-                ctx.stroke(gap, with: shading, style: dashed)
-                run = Path()
-                run.move(to: g.p(b.x, b.value))
-            } else {
-                Self.stretch(&run, a, b, g)
-            }
+        // Reading to reading: smooth and solid, broken by straight dashed stretches across missed days (6c).
+        var from = line.startIndex
+        for i in line.indices.dropFirst() where line[i].dashed {
+            ctx.stroke(Self.curve(line[from..<i], g), with: shading, style: solid)
+            var gap = Path()
+            gap.move(to: g.p(line[i - 1].x, line[i - 1].value))
+            Self.stretch(&gap, line[i - 1], line[i], g)
+            ctx.stroke(gap, with: shading, style: dashed)
+            from = i
         }
-        ctx.stroke(run, with: shading, style: solid)
+        ctx.stroke(Self.curve(line[from...], g), with: shading, style: solid)
 
         // Markers: hollow Paper dots at each past day's last reading, a dashed ring for a missed day, a filled dot for now.
         let pts = chart.points
