@@ -316,9 +316,7 @@ final class UsageModel: ObservableObject {
                     let report = try await UsageClient.fetch(session: s, orgID: account.orgID!)
                     if let w = report.weekly {
                         // Each account keeps its own running total; the active one is copied for the widget in publishSnapshot.
-                        var history = HistoryStore.load(key: Self.historyKey(account.id))
-                        history.record(w, at: Date(), owner: account.orgID)
-                        HistoryStore.save(history, key: Self.historyKey(account.id))
+                        HistoryStore.record(w, at: Date(), owner: account.orgID, key: Self.historyKey(account.id))
                     }
                     var st = AccountState(limits: report.limits, error: nil, updated: Date(), signedOut: false)
                     st.breakdown = report.breakdown

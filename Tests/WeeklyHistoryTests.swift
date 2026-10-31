@@ -200,6 +200,47 @@ final class WeeklyHistoryTests: XCTestCase {
         XCTAssertEqual(h.weeks.map(\.start), [at(0, 5, week: 1), at(0, 5, week: 2)])
     }
 
+    // Keep history: weeks past the last two move to the archive, trimmed to the setting at each reset.
+    func testArchiveKeepsOlderWeeksUpToTheSetting() {
+        let suite = "WeeklyHistoryArchiveTests"
+        let defaults = UserDefaults(suiteName: suite)!
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: dir) }
+        func record(_ w: Int, owner: String = "org") {
+            HistoryStore.record(window(10, week: w), at: at(1, 9, week: w), owner: owner, defaults: defaults, archive: dir)
+        }
+        func starts(_ h: WeeklyHistory) -> [Date] { h.weeks.map(\.start) }
+
+        // The default (2 weeks) archives nothing.
+        for w in 0..<3 { record(w) }
+        XCTAssertEqual(starts(HistoryArchive.load(in: dir)), [])
+
+        defaults.set(13, forKey: HistoryRetention.key)
+        for w in 3..<6 { record(w) }
+        XCTAssertEqual(starts(HistoryStore.load(defaults: defaults)), [at(0, 5, week: 4), at(0, 5, week: 5)])
+        XCTAssertEqual(starts(HistoryArchive.load(in: dir)), [at(0, 5, week: 1), at(0, 5, week: 2), at(0, 5, week: 3)])
+
+        // Shorter: 3 weeks in all keeps one archived week, from the next reset.
+        defaults.set(3, forKey: HistoryRetention.key)
+        record(6)
+        XCTAssertEqual(starts(HistoryArchive.load(in: dir)), [at(0, 5, week: 4)])
+
+        // Forever, then another org: its history starts over, archive included.
+        defaults.set(0, forKey: HistoryRetention.key)
+        record(7)
+        XCTAssertEqual(HistoryArchive.load(in: dir).weeks.count, 2)
+        record(8, owner: "other")
+        XCTAssertEqual(starts(HistoryArchive.load(in: dir)), [])
+        XCTAssertEqual(starts(HistoryStore.load(defaults: defaults)), [at(0, 5, week: 8)])
+
+        // Signing out clears both.
+        record(9, owner: "other"); record(10, owner: "other")
+        XCTAssertEqual(HistoryArchive.load(in: dir).weeks.count, 1)
+        HistoryStore.clear(defaults: defaults, archive: dir)
+        XCTAssertEqual(HistoryArchive.load(in: dir), WeeklyHistory())
+        XCTAssertEqual(HistoryStore.load(defaults: defaults), WeeklyHistory())
+    }
+
     func testResetDayFoldsIntoDaySix() {
         XCTAssertEqual(WeeklyChart.dayIndex(at(7, 3), windowStart: at(0, 5), calendar: cal), 6)
         XCTAssertEqual(WeeklyChart.dayIndex(at(0, 6), windowStart: at(0, 5), calendar: cal), 0)

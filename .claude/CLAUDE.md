@@ -54,6 +54,7 @@ macOS menubar app showing Claude plan usage limits, plus a Notification Center w
 
 - Usage comes from claude.ai after the user signs in inside the app (isolated `WKWebsiteDataStore` per account). Endpoint `/api/organizations/<id>/usage` is undocumented; `UsageClient.parse` accepts a `limits` array or `five_hour`/`seven_day*` keys.
 - iPhone: the user signs in inside the app (`WKWebView`); the `sessionKey` cookie, user agent and org go to the Keychain group `G3GED29J33.com.postfl.clausage-ios.shared`. Refreshes are a plain `URLSession` call with that cookie (`CookieTransport`), written to App Group `group.com.postfl.clausage`. Widgets only read the App Group, except the large widget's refresh button (`RefreshUsageIntent`). Background refresh is `BGAppRefreshTask`, best effort.
+- Weekly history (`Shared/WeeklyHistory.swift`): one All models reading per hour. The last two weeks sit in App Group defaults (widgets read them); older weeks move to `History/<key>.json` in the App Group container, trimmed to Settings → Keep history (default 2 weeks, so nothing archived). Signing out / removing an account deletes both. The chart shows one reading per 6 hours.
 - Claude Code tab reads `~/.claude/projects/*/*.jsonl` through a security-scoped folder grant the user chooses.
 - Outage alerts poll `https://status.claude.com/api/v2/summary.json`.
 

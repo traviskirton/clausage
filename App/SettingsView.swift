@@ -652,6 +652,7 @@ struct GeneralTab: View {
     @AppStorage("fillBase") private var fillBase = "auto"
     @AppStorage("fillAccent") private var fillAccent = false
     @AppStorage("refreshMinutes") private var refresh = 5
+    @AppStorage(HistoryRetention.key, store: SharedStore.defaults) private var keepWeeks = HistoryRetention.standard
 
     /// The menu bar shows All models.
     private var sessionLabel: String {
@@ -703,6 +704,12 @@ struct GeneralTab: View {
                 // The recorder is the only control: clearing it (×) turns the shortcut off.
                 SettingsRow("Open popover from anywhere") {
                     ShortcutField(name: .openPopover)
+                }
+            }
+
+            SettingsSection("History") {
+                SettingsRow("Keep history", detail: "Hourly All models readings, kept on this Mac for each account.") {
+                    SettingsMenuPicker(label: "Keep history", selection: $keepWeeks, options: HistoryRetention.options.map { ($0.weeks, $0.label) })
                 }
             }
         }

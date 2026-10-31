@@ -22,8 +22,10 @@ struct WeeklyHistory: Codable, Equatable {
     /// The org these readings belong to; recording for a different one starts over.
     var owner: String? = nil
 
-    /// Records one fetch. Readings in the same local hour are merged (the later one wins), about 168 a week.
-    mutating func record(_ window: WeeklyWindow, at now: Date, owner: String? = nil, calendar: Calendar = .current) {
+    /// Records one fetch. Readings in the same local hour are merged (the later one wins), about 168 a week. Returns the
+    /// weeks that just dropped out of the last two, oldest first, for the archive.
+    @discardableResult
+    mutating func record(_ window: WeeklyWindow, at now: Date, owner: String? = nil, calendar: Calendar = .current) -> [Week] {
         if owner != self.owner {
             weeks = []
             self.owner = owner
@@ -45,7 +47,10 @@ struct WeeklyHistory: Codable, Equatable {
             weeks[i].readings.sort { $0.t < $1.t }
         }
         if weeks[i].readings.count > 1_000 { weeks[i].readings.removeFirst(weeks[i].readings.count - 1_000) }
-        if weeks.count > 2 { weeks.removeFirst(weeks.count - 2) }
+        guard weeks.count > 2 else { return [] }
+        let older = Array(weeks.prefix(weeks.count - 2))
+        weeks.removeFirst(weeks.count - 2)
+        return older
     }
 
     func week(for window: WeeklyWindow) -> Week? {
@@ -57,24 +62,101 @@ struct WeeklyHistory: Codable, Equatable {
     }
 }
 
-/// Persistence in the App Group, so widgets can draw the chart too.
+/// Persistence in the App Group, so widgets can draw the chart too. Defaults hold the last two weeks; older ones go to
+/// `HistoryArchive`.
 enum HistoryStore {
     static let key = "weeklyHistory"
 
     static func load(key: String = key, defaults: UserDefaults = SharedStore.defaults) -> WeeklyHistory {
         guard let data = defaults.data(forKey: key) else { return WeeklyHistory() }
-        let dec = JSONDecoder()
-        dec.dateDecodingStrategy = .secondsSince1970
-        return (try? dec.decode(WeeklyHistory.self, from: data)) ?? WeeklyHistory()
+        return decode(data) ?? WeeklyHistory()
     }
 
     static func save(_ history: WeeklyHistory, key: String = key, defaults: UserDefaults = SharedStore.defaults) {
-        let enc = JSONEncoder()
-        enc.dateEncodingStrategy = .secondsSince1970
-        if let data = try? enc.encode(history) { defaults.set(data, forKey: key) }
+        if let data = encode(history) { defaults.set(data, forKey: key) }
     }
 
-    static func clear(key: String = key, defaults: UserDefaults = SharedStore.defaults) { defaults.removeObject(forKey: key) }
+    /// Records one fetch. Weeks that drop out of the last two go to the archive, if Keep history is longer than that.
+    static func record(_ window: WeeklyWindow, at now: Date, owner: String?, key: String = key,
+                       defaults: UserDefaults = SharedStore.defaults, archive: URL? = HistoryArchive.directory) {
+        var history = load(key: key, defaults: defaults)
+        if history.owner != owner { HistoryArchive.clear(key: key, in: archive) }
+        let older = history.record(window, at: now, owner: owner)
+        save(history, key: key, defaults: defaults)
+        if !older.isEmpty {
+            HistoryArchive.add(older, owner: owner, keep: HistoryRetention.weeks(defaults), key: key, in: archive)
+        }
+    }
+
+    /// The history and its archive (sign out, remove account).
+    static func clear(key: String = key, defaults: UserDefaults = SharedStore.defaults, archive: URL? = HistoryArchive.directory) {
+        defaults.removeObject(forKey: key)
+        HistoryArchive.clear(key: key, in: archive)
+    }
+
+    static func decode(_ data: Data) -> WeeklyHistory? {
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .secondsSince1970
+        return try? dec.decode(WeeklyHistory.self, from: data)
+    }
+
+    static func encode(_ history: WeeklyHistory) -> Data? {
+        let enc = JSONEncoder()
+        enc.dateEncodingStrategy = .secondsSince1970
+        return try? enc.encode(history)
+    }
+}
+
+/// Settings → Keep history: how many weeks of readings to keep, the current one included. 0 keeps everything.
+/// In the App Group, so an iPhone widget that records a fetch archives by the same rule.
+enum HistoryRetention {
+    static let key = "historyWeeks"
+    static let standard = 2
+    static let options: [(weeks: Int, label: String)] = [(2, "2 weeks"), (13, "3 months"), (26, "6 months"), (52, "1 year"), (0, "Forever")]
+
+    static func weeks(_ defaults: UserDefaults = SharedStore.defaults) -> Int {
+        defaults.object(forKey: key) as? Int ?? standard
+    }
+}
+
+/// Weeks older than the last two, one JSON file per history key in the App Group container (kept out of defaults,
+/// which every widget reload reads). About 7 KB a week. Trimmed to Keep history each time a week is added, so a
+/// shorter setting takes effect at the next reset.
+enum HistoryArchive {
+    static var directory: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedStore.groupID)?
+            .appendingPathComponent("History", isDirectory: true)
+    }
+
+    private static func file(_ key: String, _ dir: URL?) -> URL? { dir?.appendingPathComponent("\(key).json") }
+
+    /// Oldest first.
+    static func load(key: String = HistoryStore.key, in dir: URL? = directory) -> WeeklyHistory {
+        guard let url = file(key, dir), let data = try? Data(contentsOf: url) else { return WeeklyHistory() }
+        return HistoryStore.decode(data) ?? WeeklyHistory()
+    }
+
+    /// Adds weeks that left the last two, then keeps the newest `keep - 2` (the last two are in defaults).
+    static func add(_ weeks: [WeeklyHistory.Week], owner: String?, keep: Int, key: String = HistoryStore.key,
+                    in dir: URL? = directory) {
+        guard let url = file(key, dir) else { return }
+        guard keep == 0 || keep > 2 else { clear(key: key, in: dir); return }
+        var archive = load(key: key, in: dir)
+        if archive.owner != owner { archive = WeeklyHistory(weeks: [], owner: owner) }
+        for w in weeks {
+            archive.weeks.removeAll { abs($0.resetsAt.timeIntervalSince(w.resetsAt)) < 3600 }
+            archive.weeks.append(w)
+        }
+        archive.weeks.sort { $0.resetsAt < $1.resetsAt }
+        if keep > 0, archive.weeks.count > keep - 2 { archive.weeks.removeFirst(archive.weeks.count - (keep - 2)) }
+        guard let data = HistoryStore.encode(archive) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func clear(key: String = HistoryStore.key, in dir: URL? = directory) {
+        if let url = file(key, dir) { try? FileManager.default.removeItem(at: url) }
+    }
 }
 
 // MARK: Chart model (states 6a–6f)

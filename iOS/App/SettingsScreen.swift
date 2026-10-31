@@ -20,6 +20,7 @@ struct SettingsScreen: View {
     @State private var notificationsDenied = false
     @State private var icon = AppIcon.current
     @State private var confirmSignOut = false
+    @AppStorage(HistoryRetention.key, store: SharedStore.defaults) private var keepWeeks = HistoryRetention.standard
     @State private var composingFeedback = false
 
     private var limits: [UsageLimit] { Forecast.ordered(model.snapshot?.limits ?? []) }
@@ -117,6 +118,18 @@ struct SettingsScreen: View {
                     WidgetCenter.shared.reloadAllTimelines()
                 }
             } header: { SectionTitle("Limits") }
+
+            Section {
+                Picker("Keep history", selection: $keepWeeks) {
+                    ForEach(HistoryRetention.options, id: \.weeks) { Text($0.label).tag($0.weeks) }
+                }
+                .foregroundStyle(Color("Ink"))
+                .listRowBackground(Color("Cell"))
+            } header: {
+                SectionTitle("History")
+            } footer: {
+                Text("Hourly All models readings. They stay on this iPhone, and signing out deletes them.")
+            }
 
             Section {
                 IconPicker(selection: $icon)

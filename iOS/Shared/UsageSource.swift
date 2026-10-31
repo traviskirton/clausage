@@ -49,11 +49,7 @@ enum UsageSource {
             snap.weekly = report.weekly
             snap.unparsedLimits = report.unparsed
             snap.cleared = nil
-            if let w = report.weekly {
-                var history = HistoryStore.load()
-                history.record(w, at: Date(), owner: record.orgID)
-                HistoryStore.save(history)
-            }
+            if let w = report.weekly { HistoryStore.record(w, at: Date(), owner: record.orgID) }
             if snap.credits != nil, let on = report.spendEnabled { snap.credits?.enabled = on }
             // Usage credits: two extra read-only requests, at most hourly.
             if snap.credits.map({ Date().timeIntervalSince($0.fetched) > 3600 }) ?? true,
