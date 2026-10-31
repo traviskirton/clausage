@@ -16,4 +16,5 @@ if [[ "$1" == "install" ]]; then
   rm -rf "/Applications/Clausage.app"
   cp -R "$APP" /Applications/
   echo "Installed /Applications/Clausage.app"
+  open "/Applications/Clausage.app"
 fi
