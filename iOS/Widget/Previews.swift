@@ -3,10 +3,6 @@ import SwiftUI
 
 // Previews: every family, with the four sample states. Flip Dark / Light / Tinted in the canvas.
 
-#Preview("Small · Mixed", as: .systemSmall) { UsageWidget() } timeline: {
-    UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.mixed, history: UsageFixtures.history(for: UsageFixtures.mixed))
-}
-
 #Preview("Small · Calm", as: .systemSmall) { UsageWidget() } timeline: {
     UsageEntry(date: UsageFixtures.now, snapshot: UsageFixtures.calm, history: UsageFixtures.history(for: UsageFixtures.calm))
 }
