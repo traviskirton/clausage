@@ -19,6 +19,7 @@ Restart Claude Code (or reload the VS Code window). Needs `python3` and Claude C
 | Tool | What it does |
 |---|---|
 | `get_usage` | % used and left, reset time, even-pace mark, projected runout, per limit |
+| `get_history` | past weeks from the Clausage app's saved readings: final % (or so far), peak, % used each day, newest first |
 | `check_job` | `go` / `caution` / `wait` / `stop` for a job of a given size (`small`, `medium`, `large`, `overnight`, or a % of a session) |
 
 The server tells Claude to call `check_job` before big work (subagents, workflows, `/loop`, overnight runs), so you don't need to ask.
@@ -30,6 +31,8 @@ First source that works wins:
 1. **Claude's usage endpoint**, using the login Claude Code already has (macOS Keychain, or `~/.claude/.credentials.json`). Results are cached for 60 seconds.
 2. **The Clausage Mac app**, if installed and signed in.
 3. **The statusline shim**, if you installed it with `--statusline`.
+
+`get_history` needs the Clausage Mac app: it reads the hourly weekly readings the app saves (the last two weeks, more if Settings → Keep history is longer).
 
 ## Privacy
 

@@ -5,12 +5,13 @@ Sources, first fresh one wins:
   oauth      GET api.anthropic.com/api/oauth/usage with Claude Code's own login (read locally, never logged)
   app        the Clausage Mac app's snapshot (App Group plist)
   statusline ~/.clausage-mcp/usage-latest.json, written by the optional statusline shim
+History (get_history) comes from the Clausage app's hourly weekly readings: App Group plist + History/ archive.
 `python3 server.py --check` prints the source used and the percentages.
 """
 import json, os, plistlib, subprocess, sys, time, urllib.error, urllib.request
 from datetime import datetime
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 HOME = os.path.expanduser(os.environ.get("CLAUSAGE_HOME", "~/.clausage-mcp"))
 STATUSLINE_CACHE = os.path.expanduser(os.environ.get("CLAUSAGE_CACHE", os.path.join(HOME, "usage-latest.json")))
 OAUTH_CACHE = os.path.join(HOME, "oauth-cache.json")
@@ -18,6 +19,9 @@ JOBS_LOG = os.path.join(HOME, "jobs.jsonl")  # one line per check_job, to calibr
 API_BASE = os.environ.get("CLAUSAGE_API_BASE", "https://api.anthropic.com")
 APP_PLIST = os.path.expanduser(os.environ.get("CLAUSAGE_APP_PLIST",
     "~/Library/Group Containers/G3GED29J33.com.postfl.clausage/Library/Preferences/G3GED29J33.com.postfl.clausage.plist"))
+APP_HISTORY_DIR = os.path.expanduser(os.environ.get("CLAUSAGE_APP_HISTORY",
+    "~/Library/Group Containers/G3GED29J33.com.postfl.clausage/History"))
+HISTORY_KEY = "weeklyHistory"  # the active account's history (WeeklyHistory.swift HistoryStore.key)
 TTL, BACKOFF_429, FRESH, STALE = 60, 300, 15 * 60, 10 * 60
 
 # window key -> (display name, length in seconds)
@@ -215,6 +219,84 @@ def src_statusline():
     return {"at": c.get("at", 0), "source": "statusline", "rate_limits": rl}
 
 
+# ---------- history: Clausage app ----------
+
+def _history_weeks(raw):
+    """Weeks from a WeeklyHistory JSON blob (dates are seconds since 1970)."""
+    try:
+        h = json.loads(raw)
+        return [w for w in h.get("weeks") or [] if isinstance(w, dict) and w.get("resetsAt")]
+    except Exception:
+        return []
+
+
+def load_history():
+    """(weeks oldest first, kept-weeks setting). The archive holds older weeks; the plist the last two (it wins)."""
+    weeks, keep = {}, None
+    try:
+        with open(os.path.join(APP_HISTORY_DIR, HISTORY_KEY + ".json"), "rb") as f:
+            for w in _history_weeks(f.read()):
+                weeks[round(w["resetsAt"] / 3600)] = w
+    except OSError:
+        pass
+    try:
+        with open(APP_PLIST, "rb") as f:
+            d = plistlib.load(f)
+        keep = d.get("historyWeeks")
+        for w in _history_weeks(d.get(HISTORY_KEY) or b"null"):
+            weeks[round(w["resetsAt"] / 3600)] = w
+    except Exception:
+        pass
+    return [weeks[k] for k in sorted(weeks)], keep
+
+
+def _day(t):
+    return datetime.fromtimestamp(t).strftime("%a %b %-d")
+
+
+def history(args):
+    try:
+        n = max(1, min(520, int(args.get("weeks") or 4)))
+    except (TypeError, ValueError):
+        n = 4
+    weeks, keep = load_history()
+    if not weeks:
+        return {"error": "No usage history. The Clausage Mac app records it (hourly, All models weekly %) once it's "
+                         "installed and signed in."}
+    now, out = time.time(), []
+    for w in reversed(weeks[-n:]):
+        start, reset = float(w.get("start") or 0), float(w["resetsAt"])
+        rs = sorted((r for r in w.get("readings") or [] if "t" in r and "pct" in r), key=lambda r: r["t"])
+        e = {"week": f"{_day(start)} to {_day(reset)}", "current": start <= now < reset, "readings": len(rs)}
+        if e["current"]:
+            e.update(resets_at=_clock(reset), resets_in=_dur(reset - now))
+        if rs:
+            last = rs[-1]["pct"]
+            e["so_far_percent" if e["current"] else "final_percent"] = round(last, 1)
+            e["peak_percent"] = round(max(r["pct"] for r in rs), 1)
+            days, prev = {}, 0.0
+            for r in rs:
+                k = datetime.fromtimestamp(r["t"]).date()
+                days.setdefault(k, []).append(r["pct"])
+            e["days"] = []
+            for k in sorted(days):
+                seq = [prev] + days[k]
+                day = {"date": k.strftime("%a %b %-d"), "end_percent": round(seq[-1], 1),
+                       "used_percent": round(sum(max(0.0, b - a) for a, b in zip(seq, seq[1:])), 1)}
+                if any(b < a for a, b in zip(seq, seq[1:])):
+                    day["early_reset"] = True  # the % dropped: claude.ai reset the week early
+                e["days"].append(day)
+                prev = seq[-1]
+            if rs[0]["t"] - start > 86400:
+                e["note"] = f"recording started {_clock(rs[0]['t'])}; earlier days not seen by Clausage"
+        out.append(e)
+    res = {"source": "app history", "weeks": out, "weeks_available": len(weeks)}
+    if keep is not None or len(weeks) <= 2:
+        res["kept_weeks"] = "forever" if keep == 0 else (keep or 2)
+        res["kept_weeks_note"] = "Clausage keeps this many weeks (Settings > Keep history)."
+    return res
+
+
 SOURCES = [("oauth", src_oauth), ("app", src_app), ("statusline", src_statusline)]
 
 
@@ -316,6 +398,10 @@ TOOLS = [
     {"name": "get_usage",
      "description": "Current Claude plan usage: 5-hour session, weekly, and per-model weekly limits: percent used/left, reset time, even-pace mark, projected runout. Call before planning long work.",
      "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "get_history",
+     "description": "Past weekly usage (All models) recorded by the Clausage Mac app: per week the final % (or so far), peak, and % used each day. Newest week first. Use for 'how much did I use last week', comparing weeks, or which days were heavy.",
+     "inputSchema": {"type": "object", "properties": {
+         "weeks": {"type": "integer", "description": "How many weeks back, the current one included (default 4)."}}}},
     {"name": "check_job",
      "description": "Before starting a big job, check it fits in the remaining session and weekly limits. Returns verdict go/caution/wait/stop with reasons. Give estimate_session_percent (share of a 5h session the job will use) or size small(2%)/medium(10%)/large(30%)/overnight(60%).",
      "inputSchema": {"type": "object", "properties": {
@@ -327,7 +413,8 @@ TOOLS = [
 INSTRUCTIONS = ("clausage reports the user's Claude plan limits (5-hour session and weekly). "
                 "Before starting big work (subagents, workflows, /loop, long renders or builds, overnight runs, "
                 "multi-file refactors) call check_job with a size or estimate and tell the user the verdict if it is "
-                "not 'go'. Call get_usage when the user asks how much is left or what fits before a reset.")
+                "not 'go'. Call get_usage when the user asks how much is left or what fits before a reset. "
+                "Call get_history for past weeks (last week's total, heavy days, week-to-week comparisons).")
 
 
 def handle(msg):
@@ -339,7 +426,8 @@ def handle(msg):
         return {"tools": TOOLS}
     if m == "tools/call":
         name, args = p.get("name"), p.get("arguments") or {}
-        res = snapshot() if name == "get_usage" else check_job(args) if name == "check_job" else {"error": f"unknown tool {name}"}
+        tools = {"get_usage": lambda: snapshot(), "check_job": lambda: check_job(args), "get_history": lambda: history(args)}
+        res = tools[name]() if name in tools else {"error": f"unknown tool {name}"}
         return {"content": [{"type": "text", "text": json.dumps(res, indent=1)}], "isError": "error" in res}
     if m == "ping":
         return {}

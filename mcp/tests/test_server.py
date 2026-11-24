@@ -218,6 +218,73 @@ class TestApp(Base):
         self.assertIn("unreadable", server.snapshot()["sources"]["app"])
 
 
+class TestHistory(Base):
+    def setUp(self):
+        super().setUp()
+        server.APP_HISTORY_DIR = os.path.join(self.tmp, "History")
+
+    def week(self, start, pcts, step=3600):
+        return {"start": start, "resetsAt": start + 7 * 86400, "samples": len(pcts),
+                "readings": [{"t": start + 60 + i * step, "pct": p} for i, p in enumerate(pcts)]}
+
+    def write(self, plist_weeks, archive_weeks=None, keep=None):
+        d = {"weeklyHistory": json.dumps({"weeks": plist_weeks, "owner": "org"}).encode()}
+        if keep is not None:
+            d["historyWeeks"] = keep
+        with open(server.APP_PLIST, "wb") as f:
+            plistlib.dump(d, f)
+        if archive_weeks is not None:
+            os.makedirs(server.APP_HISTORY_DIR, exist_ok=True)
+            with open(os.path.join(server.APP_HISTORY_DIR, "weeklyHistory.json"), "w") as f:
+                json.dump({"weeks": archive_weeks, "owner": "org"}, f)
+
+    def test_last_week_and_days(self):
+        cur = self.now - 86400
+        last = self.week(cur - 7 * 86400, [10, 30, 55, 95], step=86400)
+        self.write([last, self.week(cur, [0, 4])])
+        h = server.history({})
+        self.assertEqual(h["weeks_available"], 2)
+        now_w, last_w = h["weeks"]
+        self.assertTrue(now_w["current"]); self.assertIn("resets_in", now_w)
+        self.assertEqual(now_w["so_far_percent"], 4)
+        self.assertFalse(last_w["current"]); self.assertNotIn("resets_at", last_w)
+        self.assertEqual(last_w["final_percent"], 95)
+        self.assertEqual([d["used_percent"] for d in last_w["days"]], [10, 20, 25, 40])
+        self.assertEqual(h["kept_weeks"], 2)
+
+    def test_archive_merges_and_limit(self):
+        base = self.now - 30 * 86400
+        old = [self.week(base, [50]), self.week(base + 7 * 86400, [60])]
+        recent = [self.week(base + 14 * 86400, [70]), self.week(base + 21 * 86400, [80])]
+        self.write(recent, archive_weeks=old + [self.week(base + 14 * 86400, [1])], keep=13)
+        h = server.history({"weeks": 3})
+        self.assertEqual(h["weeks_available"], 4)
+        self.assertEqual([w["final_percent"] for w in h["weeks"]], [80, 70, 60])  # plist wins over archive
+        self.assertEqual(h["kept_weeks"], 13)
+        self.assertEqual(server.history({"weeks": "junk"})["weeks"][0]["final_percent"], 80)
+
+    def test_early_reset_day(self):
+        start = self.now - 10 * 86400
+        self.write([self.week(start, [40, 60, 5, 12], step=600)])
+        day = server.history({})["weeks"][0]["days"]
+        self.assertTrue(any(d.get("early_reset") for d in day))
+        self.assertTrue(all(d["used_percent"] >= 0 for d in day))
+
+    def test_late_start_note(self):
+        start = self.now - 10 * 86400
+        w = self.week(start, [20, 30])
+        for r in w["readings"]:
+            r["t"] += 3 * 86400
+        self.write([w])
+        self.assertIn("recording started", server.history({})["weeks"][0]["note"])
+
+    def test_missing_and_garbage(self):
+        self.assertIn("No usage history", server.history({})["error"])
+        with open(server.APP_PLIST, "wb") as f:
+            plistlib.dump({"weeklyHistory": b"garbage"}, f)
+        self.assertIn("error", server.history({}))
+
+
 class TestStatusline(Base):
     def setUp(self):
         super().setUp()
@@ -321,7 +388,7 @@ class TestProtocol(Base):
         self.assertEqual(len(r), 5)  # notification gets no reply; parse error does
         self.assertIn("check_job", r[0]["result"]["instructions"])
         self.assertEqual(r[1]["error"]["code"], -32700)
-        self.assertEqual({t["name"] for t in r[2]["result"]["tools"]}, {"get_usage", "check_job"})
+        self.assertEqual({t["name"] for t in r[2]["result"]["tools"]}, {"get_usage", "check_job", "get_history"})
         body = json.loads(r[3]["result"]["content"][0]["text"])
         self.assertEqual(body["source"], "oauth"); self.assertEqual(body["verdict"], "go")
         self.assertEqual(r[4]["error"]["code"], -32601)
