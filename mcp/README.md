@@ -35,6 +35,10 @@ First source that works wins:
 
 Your login token is read on your machine and sent only to `api.anthropic.com`. It is never written to disk, logged or shown to Claude; the cache holds percentages only (file mode 600). The server never refreshes your login, so it can't sign Claude Code out. The usage endpoint is undocumented and may change; if it does, the other sources take over.
 
+## Job log
+
+Every `check_job` call appends one line to `~/.clausage-mcp/jobs.jsonl` (mode 600): time, Claude Code session ID and project, size or estimate, description, verdict and the usage percentages at that moment. No tokens. It's there to calibrate job sizes against what jobs really cost.
+
 ## Settings
 
 - `CLAUSAGE_WEEK_PER_SESSION` (default `0.2`): how much of the week 1% of a session costs.
@@ -45,6 +49,6 @@ Your login token is read on your machine and sent only to `api.anthropic.com`. I
 python3 -m unittest discover -s tests -v
 ```
 
-23 tests, no network beyond localhost, no real credentials: parsing for each source (both API response shapes), HTTP failures (401/429/500/timeout/garbage) falling through, credential edge cases, a token-leak check on every failure path, the stdio protocol, the verdict table, and the installer in a fake HOME.
+24 tests, no network beyond localhost, no real credentials: parsing for each source (both API response shapes), HTTP failures (401/429/500/timeout/garbage) falling through, credential edge cases, a token-leak check on every failure path, the stdio protocol, the verdict table, and the installer in a fake HOME.
 
 Not supported yet: a custom `CLAUDE_CONFIG_DIR` on macOS (Claude Code uses a different Keychain item name for it).

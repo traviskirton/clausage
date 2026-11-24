@@ -14,6 +14,7 @@ VERSION = "0.2.0"
 HOME = os.path.expanduser(os.environ.get("CLAUSAGE_HOME", "~/.clausage-mcp"))
 STATUSLINE_CACHE = os.path.expanduser(os.environ.get("CLAUSAGE_CACHE", os.path.join(HOME, "usage-latest.json")))
 OAUTH_CACHE = os.path.join(HOME, "oauth-cache.json")
+JOBS_LOG = os.path.join(HOME, "jobs.jsonl")  # one line per check_job, to calibrate job sizes later
 API_BASE = os.environ.get("CLAUSAGE_API_BASE", "https://api.anthropic.com")
 APP_PLIST = os.path.expanduser(os.environ.get("CLAUSAGE_APP_PLIST",
     "~/Library/Group Containers/G3GED29J33.com.postfl.clausage/Library/Preferences/G3GED29J33.com.postfl.clausage.plist"))
@@ -290,7 +291,25 @@ def check_job(args):
         else:
             continue
         verdict = max(verdict, v, key=RANK.index)
+    log_job(args, est, verdict, snap)
     return {"verdict": verdict, "advice": ADVICE[verdict], "notes": notes, "assumed_cost": costs, **snap}
+
+
+def log_job(args, est, verdict, snap):
+    """Append the check to jobs.jsonl (mode 600). Percentages and ids only; never fails the call."""
+    try:
+        rec = {"at": round(time.time()), "session_id": os.environ.get("CLAUDE_CODE_SESSION_ID"),
+               "project": os.environ.get("CLAUDE_PROJECT_DIR"), "size": args.get("size"),
+               "estimate_session_percent": est, "description": str(args.get("description") or "")[:300],
+               "verdict": verdict, "source": snap["source"], "age_seconds": snap["age_seconds"],
+               "used": {k: v["used_percent"] for k, v in snap["limits"].items()},
+               "resets_in": {k: v.get("resets_in") for k, v in snap["limits"].items()}}
+        os.makedirs(HOME, exist_ok=True)
+        fd = os.open(JOBS_LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception:
+        pass
 
 
 TOOLS = [

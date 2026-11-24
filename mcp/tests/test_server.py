@@ -45,6 +45,7 @@ class Base(unittest.TestCase):
         os.environ["CLAUSAGE_CREDENTIALS_FILE"] = self.creds
         server.HOME = os.path.join(self.tmp, "home")
         server.OAUTH_CACHE = os.path.join(server.HOME, "oauth-cache.json")
+        server.JOBS_LOG = os.path.join(server.HOME, "jobs.jsonl")
         server.STATUSLINE_CACHE = os.path.join(server.HOME, "usage-latest.json")
         server.APP_PLIST = os.path.join(self.tmp, "app.plist")
         server.API_BASE = "http://127.0.0.1:%d" % self.httpd.server_port
@@ -261,6 +262,24 @@ class TestCheckJob(Base):
     def test_error_passthrough(self):
         os.remove(self.creds)
         self.assertIn("error", server.check_job({}))
+        self.assertFalse(os.path.exists(server.JOBS_LOG))
+
+    def test_jobs_logged(self):
+        os.environ["CLAUDE_CODE_SESSION_ID"] = "sess-1"
+        try:
+            self.verdict(60, 10, size="large", description="refactor")
+            self.verdict(10, 10, estimate_session_percent=5)
+        finally:
+            os.environ.pop("CLAUDE_CODE_SESSION_ID")
+        lines = [json.loads(l) for l in open(server.JOBS_LOG)]
+        self.assertEqual(len(lines), 2)
+        a, b = lines
+        self.assertEqual((a["session_id"], a["size"], a["estimate_session_percent"], a["verdict"]), ("sess-1", "large", 30, "caution"))
+        self.assertEqual(a["description"], "refactor")
+        self.assertEqual(a["used"], {"session": 60.0, "week": 10.0})
+        self.assertEqual(b["estimate_session_percent"], 5)
+        self.assertEqual(os.stat(server.JOBS_LOG).st_mode & 0o777, 0o600)
+        self.assertNotIn(SENTINEL, open(server.JOBS_LOG).read())
 
 
 class TestNoLeak(Base):
