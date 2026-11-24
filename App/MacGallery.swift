@@ -38,6 +38,37 @@ enum MacGallery {
             }
         }
 
+        // The weekly chart with today's dot at the plot's edges: the Settings card (as in the Usage pane) and the large
+        // widget's compact chart, at its usual width and a narrow one.
+        for (name, scheme) in [("light", ColorScheme.light), ("dark", ColorScheme.dark)] {
+            let backdrop = scheme == .dark ? Color(red: 0.16, green: 0.13, blue: 0.11) : Color(red: 0.78, green: 0.55, blue: 0.40)
+            let grid = VStack(alignment: .leading, spacing: 16) {
+                ForEach(ChartEdgeSamples.cases, id: \.name) { c in
+                    let chart = ChartEdgeSamples.chart(x: c.x, value: c.value)
+                    HStack(alignment: .top, spacing: 16) {
+                        Text(c.name).font(.system(size: 11, design: .monospaced)).frame(width: 60, alignment: .leading)
+                        RunningTotalChart(chart: chart, level: .normal, labelBackground: SettingsColor.chartCard)
+                            .frame(height: 150)
+                            .padding(.horizontal, 4).padding(.vertical, 6)
+                            .background(SettingsColor.chartCard, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(SettingsColor.chartEdge, lineWidth: 1))
+                            .frame(width: 520)
+                        ForEach([306.0, 200.0], id: \.self) { w in
+                            RunningTotalChart(chart: chart, level: .normal, now: UsageFixtures.now, lineWidth: 4, compact: true)
+                                .frame(width: w, height: 92)
+                                .padding(16)
+                                .background(Color("Paper"), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
+                    }
+                }
+            }
+            .padding(24)
+            .background(backdrop)
+            .environment(\.colorScheme, scheme)
+            snapshot(grid, size: NSHostingView(rootView: grid).fittingSize, appearance: scheme == .dark ? .darkAqua : .aqua,
+                     to: "\(dir)/chart-edges-\(name).png")
+        }
+
         // Settings: real AppKit + SwiftUI views drawn offscreen, so native controls render too.
         ClaudeCodeLogs.previewAccess = true
         var week = ContributorsScan.Window(requests: 3329, sessions: 1088)

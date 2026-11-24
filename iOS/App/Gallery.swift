@@ -98,6 +98,24 @@ struct GalleryLock: View {
             }
             write(GalleryLock(snapshot: snap), to: "\(dir)/lock-\(name).png")
         }
+        // The weekly chart with today's dot at the plot's edges: the app's card chart and the large widget's compact one.
+        for c in ChartEdgeSamples.cases {
+            let chart = ChartEdgeSamples.chart(x: c.x, value: c.value)
+            let row = HStack(spacing: 0) {
+                ForEach(Array([(ColorScheme.dark, UsageRenderStyle.full), (.light, .full), (.dark, .accented)].enumerated()), id: \.offset) { _, v in
+                    VStack(spacing: 0) {
+                        GalleryVariant(scheme: v.0, style: v.1, size: CGSize(width: 361, height: 180), radius: 22) {
+                            RunningTotalChart(chart: chart, level: .normal, now: UsageFixtures.now).frame(height: 148)
+                        }
+                        GalleryVariant(scheme: v.0, style: v.1, size: CGSize(width: 338, height: 124), radius: 22) {
+                            RunningTotalChart(chart: chart, level: .normal, now: UsageFixtures.now, lineWidth: 4, compact: true)
+                                .frame(height: 92)
+                        }
+                    }
+                }
+            }
+            write(row, to: "\(dir)/chart-edges-\(c.name).png")
+        }
     }
 
     private static func write<V: View>(_ view: V, to path: String) {
