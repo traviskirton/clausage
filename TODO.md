@@ -8,7 +8,7 @@ Open work for Clausage, newest decisions first. Bugs live in [BUGS.md](BUGS.md);
 
 ## Ship 0.0.13 (Mac + iPhone)
 
-- [ ] Draft release notes (`tools/release-notes.sh 0.0.13`), Travis approves.
+- [x] Release notes for 0.0.13 approved (`release-notes/0.0.13.md`).
 - [ ] `./release.sh 0.0.13`, fast-forward `main`, start `0.0.14`. **Travis's OK first** (public host).
 - [ ] Get `mcp/` onto public `main` (comes with the release push; public repo, Travis's call). The MCP launch posts link to `github.com/traviskirton/clausage/tree/main/mcp`, which is 404 until then. The installer is already live at `https://clausage.ai/mcp/install.sh`.
 - [ ] Upload the iPhone archive from Xcode Organizer (Travis). App Store Connect has had the name reserved since Oct 7 with no build; Apple can release unused names.
