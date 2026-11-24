@@ -45,6 +45,8 @@ struct RunningTotalChart: View {
         var right: CGFloat { compact ? 8 : 12 }
         var plotBottom: CGFloat { size.height - letterBand - (compact ? 4 : 6) }
         var plotHeight: CGFloat { max(10, plotBottom - top) }
+        /// Limit line to 0% line, left inset to right inset: where today's label must stay.
+        var plot: CGRect { CGRect(x: left, y: y(100), width: max(0, size.width - left - right), height: plotHeight) }
         /// `f`: 0 at the window start, 1 at the reset.
         func x(_ f: Double) -> CGFloat { left + CGFloat(f) * (size.width - left - right) }
         func y(_ v: Double) -> CGFloat { plotBottom - CGFloat(min(max(v, 0), 100) / 100) * plotHeight }
@@ -170,30 +172,36 @@ struct RunningTotalChart: View {
                 .position(x: max(mid.x, g.left + 40), y: mid.y + (compact ? 9 : 12))
         }
 
-        // Today's running total, with a Paper halo; above the point, or below once it's over 85%.
+        // Today's running total, kept inside the plot and off the dot (`ChartLabelPlacement`, which flips it away from an
+        // edge: right of the dot at the start of the week, left at the end, below near the Limit line).
         if let today = chart.points.last(where: { $0.day == chart.today }) {
             let c = g.p(today.x, today.value)
             let size: CGFloat = compact ? 11 : 14
+            let text = "\(Int(chart.current.rounded()))%"
             if let plate = labelBackground {
-                // About 8pt off the dot. Above-left unless the label's top would come within 16pt of the Limit line.
-                let height = size + 4
-                let flip = c.y - 8 - height - g.y(100) < 16
-                Color.clear.frame(width: 0, height: 0)
-                    .overlay(alignment: flip ? .topLeading : .bottomTrailing) {
-                        Text("\(Int(chart.current.rounded()))%").font(.clausagePercent(size)).foregroundStyle(UsageColor.ink(style))
-                            .padding(.vertical, 2).padding(.horizontal, 4)
-                            .background(plate, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                            .fixedSize()
-                            .offset(x: flip ? 8 : -8, y: flip ? 8 : -8)
-                    }
-                    .position(c)
-            } else {
-                let below = today.value > 85
-                let nearRight = today.x > 0.72
-                HaloText(text: "\(Int(chart.current.rounded()))%", size: size, halo: paper)
+                // Mac Settings: on a plate, 8pt off the dot. Above-left; below once its top would come within 16pt of
+                // the Limit line.
+                Text(text).font(.clausagePercent(size)).foregroundStyle(UsageColor.ink(style))
+                    .padding(.vertical, 2).padding(.horizontal, 4)
+                    .background(plate, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     .fixedSize()
-                    .position(x: nearRight ? c.x - size * 1.7 : c.x + size * 1.6,
-                              y: below ? c.y + size * 1.05 : c.y - size * 1.05)
+                    .placed { d in
+                        ChartLabelPlacement.origin(dot: c, label: CGSize(width: d.width, height: d.height), plot: g.plot,
+                                                   gap: CGSize(width: 8, height: 8), preferLeft: true, preferAbove: true,
+                                                   topClearance: 16)
+                    }
+            } else {
+                // iPhone and widget: with a Paper halo, centered about 1.6 × size right of and 1.05 × size above the dot;
+                // left of it past 72% of the week, below it past 85%.
+                let dotRadius: CGFloat = compact ? 4.5 : 5
+                HaloText(text: text, size: size, halo: paper)
+                    .fixedSize()
+                    .placed { d in
+                        let gap = CGSize(width: max(dotRadius + 1, size * 1.6 - d.width / 2),
+                                         height: max(dotRadius + 1, size * 1.05 - d.height / 2))
+                        return ChartLabelPlacement.origin(dot: c, label: CGSize(width: d.width, height: d.height), plot: g.plot,
+                                                          gap: gap, preferLeft: today.x > 0.72, preferAbove: today.value <= 85)
+                    }
             }
         }
 
@@ -213,6 +221,13 @@ struct RunningTotalChart: View {
     private var accessibilityText: String {
         let pace = Int((min(max(now.timeIntervalSince(chart.windowStart) / chart.resetsAt.timeIntervalSince(chart.windowStart), 0), 1) * 100).rounded())
         return "All models this week: \(Int(chart.current.rounded())) percent used so far. An even pace would be \(pace) percent by now."
+    }
+}
+
+private extension View {
+    /// Puts this view's top-left corner at `origin` inside a `.topLeading` ZStack, with its measured size in hand.
+    func placed(_ origin: @escaping (ViewDimensions) -> CGPoint) -> some View {
+        alignmentGuide(.leading) { -origin($0).x }.alignmentGuide(.top) { -origin($0).y }
     }
 }
 
