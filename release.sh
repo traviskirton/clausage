@@ -70,6 +70,10 @@ NOTES="release-notes/$NOTES_VER.md"
 grep -q -- "<!-- draft -->" "$NOTES" && die "$NOTES is a draft: approve it (tools/release-notes.sh $NOTES_VER --approve) and commit"
 git ls-files --error-unmatch "$NOTES" >/dev/null 2>&1 || die "$NOTES isn't committed"
 
+# The MCP reads this app's snapshot, so its tests gate the release too.
+MCP_LOG=$(cd mcp && python3 -W ignore -m unittest discover -s tests 2>&1) || { echo "$MCP_LOG" >&2; die "mcp tests failed"; }
+echo "mcp tests: OK"
+
 # 0. Install and open the previous release, so this one arrives as a real Sparkle update.
 if (( UPLOAD && INSTALL_PREVIOUS )); then
   PREV=$(ls release/Clausage-*.zip 2>/dev/null | sort -V | tail -1)
