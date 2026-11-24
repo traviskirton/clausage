@@ -471,6 +471,24 @@ class TestInstaller(unittest.TestCase):
         self.assertIn("mcp add -s user clausage -- python3", open(self.log).read())
         self.assertIn("no source yet", p.stdout)  # self-check ran, no creds in fake HOME
 
+    def test_piped_install_downloads(self):
+        """`curl ... | sh`: no files beside the script, so it fetches them from CLAUSAGE_MCP_BASE."""
+        env = {"HOME": self.home, "PATH": self.bin + os.pathsep + os.environ["PATH"], "CLAUSAGE_MCP_BASE": "file://" + ROOT}
+        script = open(os.path.join(ROOT, "install.sh")).read()
+        p = subprocess.run(["sh", "-s"], input=script, capture_output=True, text=True, env=env, timeout=30, cwd=self.tmp)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        d = os.path.join(self.home, ".clausage-mcp")
+        for f in ("server.py", "statusline.sh"):
+            self.assertEqual(open(os.path.join(d, f)).read(), open(os.path.join(ROOT, f)).read())
+        env["CLAUSAGE_MCP_BASE"] = "file:///nonexistent"
+        p = subprocess.run(["sh", "-s"], input=script, capture_output=True, text=True, env=env, timeout=30, cwd=self.tmp)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("download of server.py failed", p.stdout)
+        self.assertFalse(os.path.exists(os.path.join(d, "server.py.tmp")))
+        p = subprocess.run(["sh", "-s", "uninstall"], input=script, capture_output=True, text=True, env=env, timeout=30, cwd=self.tmp)
+        self.assertEqual(p.returncode, 0)
+        self.assertFalse(os.path.exists(d))
+
     def test_statusline_optin_and_uninstall(self):
         self.assertEqual(self.sh("--statusline").returncode, 0)
         s = json.load(open(self.settings))

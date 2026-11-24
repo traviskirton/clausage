@@ -26,6 +26,9 @@ FTP_PASS=$(security find-generic-password -s "$SITE_KEYCHAIN_SERVICE" -a "$SITE_
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 cp -R site/. "$STAGE/"
+# The Clausage MCP, for `curl -fsSL https://clausage.ai/mcp/install.sh | sh`. mcp/ stays the only copy in git.
+MCP_FILES=(install.sh server.py statusline.sh)
+for f in $MCP_FILES; do cp -f "mcp/$f" "$STAGE/mcp/$f"; done
 CSS_V=$(shasum -a 256 site/assets/site.css | cut -c1-10)
 find "$STAGE" -name '*.html' -exec perl -pi -e "s{/assets/site\.css(\?v=[0-9a-f]+)?\"}{/assets/site.css?v=$CSS_V\"}g" {} +
 
@@ -39,8 +42,12 @@ for f in $(cd "$STAGE" && find . -type f ! -name .DS_Store | sed 's|^\./||' | so
 done
 unset FTP_PASS
 
-for p in / /privacy/ /acknowledgements/; do
+for p in / /privacy/ /acknowledgements/ /support/; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE_BASE$p")
   [[ "$code" == 200 ]] || die "$SITE_BASE$p returned HTTP $code"
+done
+for f in $MCP_FILES; do
+  [[ "$(curl -fsS "$SITE_BASE/mcp/$f" | shasum -a 256 | cut -c1-64)" == "$(shasum -a 256 "mcp/$f" | cut -c1-64)" ]] \
+    || die "$SITE_BASE/mcp/$f doesn't match mcp/$f"
 done
 echo "Published: $SITE_BASE"

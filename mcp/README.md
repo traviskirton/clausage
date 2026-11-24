@@ -5,13 +5,13 @@ Lets Claude Code see your Claude plan limits (5-hour session, weekly, per-model 
 ## Install
 
 ```sh
-git clone https://github.com/traviskirton/clausage && sh clausage/mcp/install.sh
+curl -fsSL https://clausage.ai/mcp/install.sh | sh
 ```
 
-Restart Claude Code (or reload the VS Code window). Needs `python3` and Claude Code signed in with a Pro/Max plan. Nothing else to install.
+Restart Claude Code (or reload the VS Code window). Needs `python3` and Claude Code signed in with a Pro/Max plan. Nothing else to install. Run it again to update. From a checkout, `sh mcp/install.sh` does the same.
 
-- `sh install.sh --statusline` also adds a statusline shim as an extra source (it keeps your current statusline running).
-- `sh install.sh uninstall` removes everything and puts your old statusline back.
+- `… | sh -s -- --statusline` also adds a statusline shim as an extra source (it keeps your current statusline running).
+- `… | sh -s uninstall` removes everything and puts your old statusline back.
 - `python3 ~/.clausage-mcp/server.py --check` shows which source works and your percentages.
 
 ## What Claude gets

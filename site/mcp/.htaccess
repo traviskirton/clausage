@@ -1,0 +1,9 @@
+# The Clausage MCP (install.sh, server.py, statusline.sh), copied here from mcp/ by deploy-site.sh at upload time.
+# Served as plain text for `curl | sh`, never run on the server, and never cached, so an install gets the latest.
+RemoveHandler .py .sh .cgi .pl
+<FilesMatch "\.(py|sh)$">
+  ForceType text/plain
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-cache"
+</IfModule>
