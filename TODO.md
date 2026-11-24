@@ -4,7 +4,7 @@ Open work for Clausage, newest decisions first. Bugs live in [BUGS.md](BUGS.md);
 
 ## Now
 
-- [x] **0% label on the weekly chart** ([BUGS.md](BUGS.md)): fixed in `ab23346` on branch `fix-zero-label`. Merge into `0.0.13`.
+- [x] **0% label on the weekly chart** ([BUGS.md](BUGS.md)): fixed in `ab23346`, merged into `0.0.13`.
 
 ## Ship 0.0.13 (Mac + iPhone)
 
