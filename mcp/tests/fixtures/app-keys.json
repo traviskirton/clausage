@@ -1,0 +1,8 @@
+{
+  "archiveDir" : "History",
+  "archiveFile" : "weeklyHistory.json",
+  "historyKey" : "weeklyHistory",
+  "macGroupID" : "G3GED29J33.com.postfl.clausage",
+  "retentionKey" : "historyWeeks",
+  "snapshotKey" : "snapshot"
+}

@@ -172,16 +172,24 @@ enum SharedStore {
     /// The account is signed in on a Free plan (no usage to show).
     static func isFree(_ s: Snapshot?) -> Bool { s?.connected == true && s?.plan?.isFree == true }
 
+    /// Defaults key for the snapshot. The clausage MCP (`mcp/server.py`) reads it, and the field names inside it:
+    /// `MCPContractTests` fails if either changes.
+    static let snapshotKey = "snapshot"
+
     static func save(_ snapshot: Snapshot) {
-        let enc = JSONEncoder()
-        enc.dateEncodingStrategy = .iso8601
-        if let data = try? enc.encode(snapshot) { defaults.set(data, forKey: "snapshot") }
+        if let data = encode(snapshot) { defaults.set(data, forKey: snapshotKey) }
     }
 
     static func load() -> Snapshot? {
-        guard let data = defaults.data(forKey: "snapshot") else { return nil }
+        guard let data = defaults.data(forKey: snapshotKey) else { return nil }
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
         return try? dec.decode(Snapshot.self, from: data)
+    }
+
+    static func encode(_ snapshot: Snapshot) -> Data? {
+        let enc = JSONEncoder()
+        enc.dateEncodingStrategy = .iso8601
+        return try? enc.encode(snapshot)
     }
 }

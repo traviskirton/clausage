@@ -65,6 +65,7 @@ struct WeeklyHistory: Codable, Equatable {
 /// Persistence in the App Group, so widgets can draw the chart too. Defaults hold the last two weeks; older ones go to
 /// `HistoryArchive`.
 enum HistoryStore {
+    /// The clausage MCP reads this key and `WeeklyHistory`'s field names (`MCPContractTests`).
     static let key = "weeklyHistory"
 
     static func load(key: String = key, defaults: UserDefaults = SharedStore.defaults) -> WeeklyHistory {
@@ -123,9 +124,11 @@ enum HistoryRetention {
 /// which every widget reload reads). About 7 KB a week. Trimmed to Keep history each time a week is added, so a
 /// shorter setting takes effect at the next reset.
 enum HistoryArchive {
+    /// Folder in the App Group container. The clausage MCP reads it (`MCPContractTests`).
+    static let folder = "History"
     static var directory: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedStore.groupID)?
-            .appendingPathComponent("History", isDirectory: true)
+            .appendingPathComponent(folder, isDirectory: true)
     }
 
     private static func file(_ key: String, _ dir: URL?) -> URL? { dir?.appendingPathComponent("\(key).json") }

@@ -1,0 +1,34 @@
+{
+  "connected" : true,
+  "limits" : [
+    {
+      "id" : "s",
+      "isActive" : true,
+      "kind" : "session",
+      "percent" : 10,
+      "resetsAt" : "2026-09-21T16:13:20Z",
+      "severity" : "normal",
+      "shortTitle" : "Session",
+      "title" : "Current session"
+    },
+    {
+      "id" : "w",
+      "kind" : "weekly_all",
+      "percent" : 93,
+      "resetsAt" : "2026-09-22T14:13:20Z",
+      "severity" : "warning",
+      "shortTitle" : "Weekly · All",
+      "title" : "Weekly · All models"
+    },
+    {
+      "id" : "f",
+      "kind" : "weekly_scoped",
+      "percent" : 76,
+      "resetsAt" : "2026-09-22T14:13:20Z",
+      "severity" : "normal",
+      "shortTitle" : "Weekly · Fable",
+      "title" : "Weekly · Fable"
+    }
+  ],
+  "updated" : "2026-09-21T14:13:20Z"
+}

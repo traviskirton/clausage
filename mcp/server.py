@@ -17,11 +17,13 @@ STATUSLINE_CACHE = os.path.expanduser(os.environ.get("CLAUSAGE_CACHE", os.path.j
 OAUTH_CACHE = os.path.join(HOME, "oauth-cache.json")
 JOBS_LOG = os.path.join(HOME, "jobs.jsonl")  # one line per check_job, to calibrate job sizes later
 API_BASE = os.environ.get("CLAUSAGE_API_BASE", "https://api.anthropic.com")
+# The Mac app's App Group. These names and the JSON fields inside are the app's; MCPContractTests (Swift) and
+# TestAppContract (here) check both sides against mcp/tests/fixtures/.
+APP_GROUP = "G3GED29J33.com.postfl.clausage"
+SNAPSHOT_KEY, HISTORY_KEY, RETENTION_KEY, ARCHIVE_DIR = "snapshot", "weeklyHistory", "historyWeeks", "History"
 APP_PLIST = os.path.expanduser(os.environ.get("CLAUSAGE_APP_PLIST",
-    "~/Library/Group Containers/G3GED29J33.com.postfl.clausage/Library/Preferences/G3GED29J33.com.postfl.clausage.plist"))
-APP_HISTORY_DIR = os.path.expanduser(os.environ.get("CLAUSAGE_APP_HISTORY",
-    "~/Library/Group Containers/G3GED29J33.com.postfl.clausage/History"))
-HISTORY_KEY = "weeklyHistory"  # the active account's history (WeeklyHistory.swift HistoryStore.key)
+    f"~/Library/Group Containers/{APP_GROUP}/Library/Preferences/{APP_GROUP}.plist"))
+APP_HISTORY_DIR = os.path.expanduser(os.environ.get("CLAUSAGE_APP_HISTORY", f"~/Library/Group Containers/{APP_GROUP}/{ARCHIVE_DIR}"))
 TTL, BACKOFF_429, FRESH, STALE = 60, 300, 15 * 60, 10 * 60
 
 # window key -> (display name, length in seconds)
@@ -181,7 +183,7 @@ APP_KINDS = {"session": "five_hour", "weekly_all": "seven_day"}
 def src_app():
     try:
         with open(APP_PLIST, "rb") as f:
-            raw = plistlib.load(f).get("snapshot")
+            raw = plistlib.load(f).get(SNAPSHOT_KEY)
         s = json.loads(raw)
     except FileNotFoundError:
         raise SourceError("Clausage app not installed")
@@ -242,7 +244,7 @@ def load_history():
     try:
         with open(APP_PLIST, "rb") as f:
             d = plistlib.load(f)
-        keep = d.get("historyWeeks")
+        keep = d.get(RETENTION_KEY)
         for w in _history_weeks(d.get(HISTORY_KEY) or b"null"):
             weeks[round(w["resetsAt"] / 3600)] = w
     except Exception:
