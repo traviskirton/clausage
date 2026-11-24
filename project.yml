@@ -160,6 +160,7 @@ targets:
       - Shared/Forecast.swift
       - Shared/SampleData.swift
       - Shared/SignInPolicy.swift
+      - Shared/ChartLabelPlacement.swift
       - App/ContributorsScan.swift
     settings:
       base:
