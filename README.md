@@ -63,6 +63,10 @@ Turn on **Scan Claude Code sessions** and Clausage breaks down what's eating you
 
 It reads `~/.claude` on your Mac. Only totals are kept, never prompts or code, and nothing leaves the Mac.
 
+## Let Claude Code check the plate
+
+[`mcp/`](mcp/) is a small MCP server that tells Claude Code your limits, so it checks before starting a big job (subagents, workflows, overnight runs) and warns you when it won't fit. Install with `sh mcp/install.sh`; it needs only `python3`. It reads Claude Code's own login, or Clausage's numbers if the app is signed in. Details in [mcp/README.md](mcp/README.md).
+
 ## Privacy
 
 Nothing funny in the casing.
